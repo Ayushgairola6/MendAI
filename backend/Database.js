@@ -2,11 +2,14 @@ import pkg from "pg";
 const { Pool } = pkg;
 import dotenv from 'dotenv';
 dotenv.config();
-// Replace with your PostgreSQL URI
+//  creating a pg pool to handle async requests
 export const pool = new Pool({
   connectionString: process.env.PG_URI,
+  ssl: { rejectUnauthorized: false },
+  max: 20, 
+  idleTimeoutMillis: 30000, 
+  connectionTimeoutMillis: 7000, 
 });
-
 // Test the connection
 pool
   .connect()
