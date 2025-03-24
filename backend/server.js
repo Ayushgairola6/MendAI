@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import {pool} from './Database.js';
-import { CreateUsersTable } from "./Model/usersTable.js";
-import { CreateMessagesTable } from "./Model/MessagesTable.js";
+// import { CreateUsersTable } from "./Model/usersTable.js";
+// import { CreateMessagesTable } from "./Model/MessagesTable.js";
 import { server,app } from "./controller/chatController.js";
 import { Register,Login,LoginStateUpdate } from './controller/AuthController.js';
 import { getChatHistory } from './controller/chatController.js';

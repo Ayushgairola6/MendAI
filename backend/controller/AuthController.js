@@ -75,9 +75,9 @@ export const Login = (req, res) => {
                 const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "3d" });
                 // sending the token with cookie for secure data transaction
                 res.cookie("auth_token", token, {
-                    httpOnly: false,
-                    secure: false,
-                    sameSite: "Strict", // Prevent CSRF attacks
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: "none", // Prevent CSRF attacks
                     maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
                 });
                 return res.status(200).json({ success: true, message: "Logged in successfully" });
