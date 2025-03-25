@@ -13,7 +13,7 @@ function App() {
   //  function to fetch user details
 async  function handelAccountDetails (){
   try{  
-    const response = await axios.get(`http://localhost:8080/api/account/data`,{withCredentials:true});
+    const response = await axios.get(`https://mendai.onrender.com/api/account/data`,{withCredentials:true});
     setUser(response.data.message);
   }catch(error){
     throw new Error(error);
@@ -24,7 +24,7 @@ async  function handelAccountDetails (){
     useEffect(()=>{
       const Verify = async ()=>{
         try{
-        const response = await axios.get("http://localhost:8080/api/verify/account",{withCredentials:true});
+        const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true});
         if(response.data.message==="authorized"){
           setIsLoggedIn(true);
         }

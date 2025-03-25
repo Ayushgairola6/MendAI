@@ -61,7 +61,6 @@ export const Login = (req, res) => {
 
             const user = result.rows[0];
 
-            // Compare password (async)
             bcrypt.compare(password, user.password, (err, isMatch) => {
                 if (err) {
                     console.error(err);
@@ -71,14 +70,14 @@ export const Login = (req, res) => {
                 if (!isMatch) {
                     return res.status(400).json({ success: false, message: "Invalid password" });
                 }
-                // assign the user a token for 2 days
+                
                 const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "3d" });
                 // sending the token with cookie for secure data transaction
                 res.cookie("auth_token", token, {
                     httpOnly: true,
                     secure: true,
-                    sameSite: "none", // Prevent CSRF attacks
-                    maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
+                    sameSite: "none", 
+                    maxAge: 2 * 24 * 60 * 60 * 1000, 
                 });
                 return res.status(200).json({ success: true, message: "Logged in successfully" });
             });

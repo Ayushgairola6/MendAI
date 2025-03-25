@@ -17,7 +17,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
  
    const handleChatHistory = async ()=>{
     try{
-      const response = await axios.get("http://localhost:8080/api/chat/history/data",{withCredentials:true});
+      const response = await axios.get("https://mendai.onrender.com/api/chat/history/data",{withCredentials:true});
       // console.log(response.data);
       setMessages(response.data)
     }catch(error){
@@ -34,7 +34,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     if (isLoggedIn === false) return;
 
     // Initialize socket connection
-    socket.current = io("http://localhost:8080");
+    socket.current = io("https://mendai.onrender.com");
 
     //  default connection event to connect with the server
     socket.current.on("connect", () => {
