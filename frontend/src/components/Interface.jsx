@@ -18,7 +18,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
    const handleChatHistory = async ()=>{
     try{
       const response = await axios.get("http://localhost:8080/api/chat/history/data",{withCredentials:true});
-      console.log(response.data);
+      // console.log(response.data);
       setMessages(response.data)
     }catch(error){
       console.log(error);
@@ -38,13 +38,13 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
 
     //  default connection event to connect with the server
     socket.current.on("connect", () => {
-      console.log("Socket connection started");
+      // console.log("Socket connection started");
     });
 
     //  join event listening
     socket.current.on("newMessage", (data) => {
       console.log("message has been sent and recieved")
-      console.log(data);
+      // console.log(data);
       setMessages((prev)=>[...prev,data]);
     });
 
@@ -52,7 +52,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     return () => {
       if (socket.current) {
         socket.current.disconnect();
-        console.log("Socket disconnected");
+        // console.log("Socket disconnected");
       }
     };
   }, [isLoggedIn]);
@@ -72,27 +72,129 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     {/* main body */}
     <Navbar></Navbar>
 
-    <div   className=" h-screen max-h-screen flex flex-col items-center justify-center p-2 ">
-      <div className="border border-gray-400 shadow-md shadow-gray-700 rounded-lg h-full w-4/5 overflow-auto relative">
-        <div className=" w-full bg-black/80  text-white p-2 font-bold text-xl sticky top-0">
-          <label >ALICE</label><img src="/" alt="" />
-        </div>
-          {messages.length>0 &&user!==null ?messages.map((msg,index)=>{
-            return (<>
-             <div key={index} className={` ${msg.user_id===user.id?"text-left":"text-right"} p-2 mt-2`}>
-              <ul className="font-bold text-lg">{msg.user_id===user.id?msg.name:"Alice"}</ul>
-              <ul className={`${msg.user_id===user.id?"text-green-700":"text-blue-700"}`}>{msg.message}</ul>
-             </div>
-             
-            </>)
-          }):<span>Please! Be respectful Alice responds based on you messages.</span>}
-        {/* messages will render here */}
-      </div>
-      {/* button and input container */}
-      <div className="flex items-center justify-evenly h-20  w-4/5 mt-4 border border-gray-400 shadow-md shadow-gray-500 rounded-lg">
-      <input ref={InputRef} className="w-4/5 py-4 px-4 font-bold rounded-lg focus:outline-none focus:ring-0" placeholder="Enter your message here" type="text" />         <button onClick={SendMessage} style={{ background: "red", color: "white", boxShadow: "1px 3px 2px black" }} className="cursor-pointer px-6 py-2 font-bold rounded-xl ">Send</button>
-      </div>
+    <div
+  className="h-screen max-h-screen flex flex-col items-center justify-center p-2"
+  style={{
+    background: "linear-gradient(to bottom, #fdfcfb, #e2d9c5)", // Instagram-like gradient
+  }}
+>
+  <div
+    className="border rounded-lg w-full md:w-full h-full overflow-auto relative"
+    style={{
+      borderColor: "#dbdbdb", // Light gray border
+      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)", // Subtle shadow
+    }}
+  >
+    {/* Header */}
+    <div
+      className="w-full p-2 font-bold text-lg sticky top-0 flex items-center justify-between"
+      style={{
+        background: "linear-gradient(to right, black, gray, black)", // Instagram gradient
+        color: "#ffffff", // White text
+      }}
+    >
+      <label style={{ fontFamily: "Arial, sans-serif" }}>ALICE</label>
+      <img
+        src="/"
+        alt=""
+        style={{
+          width: "28px",
+          height: "28px",
+          borderRadius: "50%",
+        }}
+      />
     </div>
+
+    {/* Messages */}
+    {messages.length > 0 && user !== null ? (
+      messages.map((msg, index) => (
+        <div
+          key={index}
+          className={`${
+            msg.user_id === user.id ? "text-left" : "text-right"
+          } p-2`}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: msg.user_id === user.id ? "flex-start" : "flex-end",
+            marginTop: "8px",
+          }}
+        >
+          <ul
+            className="font-bold text-sm"
+            style={{
+              color: "#262626", // Dark text for names
+              fontFamily: "Arial, sans-serif",
+            }}
+          >
+            {msg.user_id === user.id ? msg.name : "Alice"}
+          </ul>
+          <ul
+            style={{
+              color:
+                msg.user_id === user.id
+                  ? "#009688" // Green for user messages
+                  : "#405de6", // Blue for Alice's messages
+              fontFamily: "Arial, sans-serif",
+              fontSize: "14px", // Compact font size
+            }}
+          >
+            {msg.message}
+          </ul>
+        </div>
+      ))
+    ) : (
+      <span
+        style={{
+          color: "#8e8e8e", // Instagram's muted gray
+          fontWeight: "bold",
+          fontFamily: "Arial, sans-serif",
+          fontSize: "14px", // Compact font size
+        }}
+      >
+        Please! Be respectful. Alice responds based on your messages.
+      </span>
+    )}
+  </div>
+
+  {/* Input and Button */}
+  <div
+    className="flex items-center justify-between w-full md:w-full mt-4 border rounded-lg"
+    style={{
+      borderColor: "#dbdbdb", // Light gray border
+      boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)", // Subtle shadow
+      height: "60px", // Reduced height for phones
+      padding: "4px 8px",
+    }}
+  >
+    <input
+      ref={InputRef}
+      className="w-4/5 py-2 px-3 font-bold rounded-lg focus:outline-none focus:ring-0"
+      placeholder="Enter your message here"
+      type="text"
+      style={{
+        background: "linear-gradient(to right, #f8f8f8, #ffffff)", // Light input gradient
+        color: "#262626", // Dark text
+        fontFamily: "Arial, sans-serif",
+        fontSize: "14px", // Smaller text for compact view
+      }}
+    />
+    <button
+      onClick={SendMessage}
+      className="cursor-pointer px-4 py-2 font-bold rounded-lg"
+      style={{
+        background:
+          "linear-gradient(to right, #833ab4, #fd1d1d, #fcb045)", // Instagram gradient
+        color: "#ffffff", // White text
+        boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)", // Shadow effect
+        fontSize: "14px", // Compact font size
+      }}
+    >
+      Send
+    </button>
+  </div>
+</div>
+
 
   </>)
 }
