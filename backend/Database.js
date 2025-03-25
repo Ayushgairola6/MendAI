@@ -5,7 +5,7 @@ dotenv.config();
 //  creating a pg pool to handle async requests
 export const pool = new Pool({
   connectionString: process.env.PG_URI,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false ,require: true},
   max: 20, 
   idleTimeoutMillis: 30000, 
   connectionTimeoutMillis: 7000, 
