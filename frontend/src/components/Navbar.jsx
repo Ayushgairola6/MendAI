@@ -1,37 +1,55 @@
-const Navbar = () => {
-    return <>
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { MdSettings } from 'react-icons/md';
+import { FaLightbulb, FaSun,FaMoon } from 'react-icons/fa';
+import EditModal from './EditProfileModal';
+import Socials from './Sociala';
+const Navbar = ({color,setColor,user}) => {
 
-<div
-  className="sticky"
-  style={{
-    background: "linear-gradient(to right, #833ab4, #fd1d1d, #fcb045)", // Instagram gradient
-    color: "#ffffff", // White text
-    padding: "4px 12px", // Compact padding
-    fontWeight: "bold", // Bold font
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)", // Subtle shadow
-  }}
->
-  <h1
-    className="text-center"
-    style={{
-      border: "2px solid #ffffff", // White border for contrast
-      borderRadius: "12px", // Smoothly rounded corners
-      width: "56px", // Adjusted width for a better ratio
-      height: "40px", // Adjusted height
-      lineHeight: "40px", // Vertically centered text
-      textAlign: "center", // Centered text alignment
-      fontFamily: "Arial, sans-serif", // Clean font style
-    }}
-  >
-    ALICE
-  </h1>
-</div>
+  const [visible, setVisible] = useState(false);
+  const [showSocials, setShowSocials] = useState(false);
+  const [theme, setTheme] = useState(false);
+  return <>
+
+    <div className="bg-black px-6  py-2 text-white flex items-center justify-between sticky top-0 left-0 w-full z-999 font-bold text-sm">
+      <img className='border-0 rounde-full h-10 w-10' src=".\src\assets\react.svg" alt="" />
+      <div className='flex items-center justify-evenly gap-4'>
+        <Link> <img className='border-0 rounded-full h-10 w-10' src={user?user.image:"/"} alt="/" /></Link>
+        <Link onClick={() => {
+          if (showSocials === true) {
+            setShowSocials(false)
+          }
+          setVisible(!visible)
+        }} className='relative flex items-center justify-center gap-1'>Account
+        </Link>
+        <EditModal visible={visible} />
+
+        <Link onClick={() => {
+          if (visible === true) {
+            setVisible(false)
+          }
+          setShowSocials(!showSocials)
+        }} className='relative'>Socials</Link>
+        <Socials showSocials={showSocials} />
+        {/* toggle theme */}
+        <section onClick={(e) => {setTheme(!theme); 
+          if(e.target.innerText==="Light" || e.target.innerText==="Dark"){
+            setColor(e.target.innerText )
+          }
+        }}>
+          <FaLightbulb   className='relative' size={20} />
+          {theme === true ? <div className={`absolute bg-black top-20 right-15 p-2  rounded-lg`} >
+            <ul  className='flex items-center justify-center mt-1 gap-2' >Dark <FaMoon /></ul>
+            <ul  className='flex items-center justify-center mt-1 gap-2'>Light <FaSun/></ul>
+          </div> : null}
+        </section>
+
+      </div>
+
+    </div>
 
 
-    </>
+  </>
 }
 
 export default Navbar;

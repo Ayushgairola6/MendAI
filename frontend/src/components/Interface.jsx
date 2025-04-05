@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import Navbar from "./Navbar";
 import axios from "axios";
-const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
+const InterFace = ({ user,isLoggedIn, setIsLoggedIn,color }) => {
 
   const InputRef = useRef(null);
   const socket = useRef(null);
@@ -17,7 +17,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
  
    const handleChatHistory = async ()=>{
     try{
-      const response = await axios.get("https://mendai.onrender.com/api/chat/history/data",{withCredentials:true});
+      const response = await axios.get("http://localhost:8080/api/chat/history/data",{withCredentials:true});
       // console.log(response.data);
       setMessages(response.data)
     }catch(error){
@@ -34,7 +34,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     if (isLoggedIn === false) return;
 
     // Initialize socket connection
-    socket.current = io("https://mendai.onrender.com");
+    socket.current = io("http://localhost:8080");
 
     //  default connection event to connect with the server
     socket.current.on("connect", () => {
@@ -70,12 +70,11 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
 
   return (<>
     {/* main body */}
-    <Navbar></Navbar>
 
-    <div
+    <div onClick={()=>console.log(color)}
   className="h-screen max-h-screen flex flex-col items-center justify-center p-2"
   style={{
-    background: "linear-gradient(to bottom, #fdfcfb, #e2d9c5)", // Instagram-like gradient
+    background:`${color==="Light"?"linear-gradient(to right, white, whitesmoke)":"linear-gradient(to right, black,navyblue)"}`, 
   }}
 >
   <div
@@ -95,7 +94,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     >
       <label style={{ fontFamily: "Arial, sans-serif" }}>ALICE</label>
       <img
-        src="/"
+        src=".\src\assets\react.svg"
         alt=""
         style={{
           width: "28px",
@@ -144,16 +143,15 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
         </div>
       ))
     ) : (
-      <span
+      <div
         style={{
-          color: "#8e8e8e", // Instagram's muted gray
+          color: "blue", // Instagram's muted gray
           fontWeight: "bold",
           fontFamily: "Arial, sans-serif",
-          fontSize: "14px", // Compact font size
-        }}
-      >
+                  }}
+      className="h-full flex items-center cursor-pointer justify-center text-xl animate-pulse transition-all" >
         Please! Be respectful. Alice responds based on your messages.
-      </span>
+      </div>
     )}
   </div>
 
@@ -182,6 +180,7 @@ const InterFace = ({ user,isLoggedIn, setIsLoggedIn }) => {
     <button
       onClick={SendMessage}
       className="cursor-pointer px-4 py-2 font-bold rounded-lg"
+      type="submit"
       style={{
         background:
           "linear-gradient(to right, #833ab4, #fd1d1d, #fcb045)", // Instagram gradient

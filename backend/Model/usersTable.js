@@ -10,7 +10,7 @@ export const CreateUsersTable = ()=>{
     dob DATE
 )`;
 
-     pool.query(query,(err,result)=>{
+     pool.query(`ALTER TABLE users ADD COLUMN google_id TEXT`,(err,result)=>{
         if(err){
             console.log(err);
             return;

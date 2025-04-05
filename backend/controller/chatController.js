@@ -122,6 +122,7 @@ function generateAIResponse(userMessage) {
 export function getChatHistory(req,res){
     try {
         const userId = req.user.userId;
+        console.log(req.user)
          const AI_ID = 0;
         if(!userId){
             console.log("user ki id not found");

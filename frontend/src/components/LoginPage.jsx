@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef, useState } from 'react';
 import axios from "axios";
 
-const Login = ({ isLoggedIn, setIsLoggedIn }) => {
+const Login = ({ isLoggedIn, setIsLoggedIn,handleGoogleLogin }) => {
 
   const Email = useRef();
   const Password = useRef();
@@ -14,6 +14,8 @@ const Login = ({ isLoggedIn, setIsLoggedIn }) => {
     }
   }, [isLoggedIn]);
 
+
+ 
 
 
   async function handleLogin() {
@@ -31,7 +33,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn }) => {
     try {
       setStatus("pending")
       // with credentials so that cookies can be accepted and sent back to the server
-      const response = await axios.post(`https://mendai.onrender.com/api/Login`, data, { withCredentials: true });
+      const response = await axios.post(`http://localhost:8080/api/Login`, data, { withCredentials: true });
       console.log(response.data);
       setIsLoggedIn(true);
       setStatus("successs")
@@ -138,7 +140,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn }) => {
 
       {/* OAuth Buttons */}
       <div className="flex flex-col gap-3">
-        <button
+        <button onClick={handleGoogleLogin}
           className="w-full border py-2 rounded-lg font-bold hover:bg-gray-100 transition"
           style={{
             borderColor: "#d1d5db", // Light gray border

@@ -4,7 +4,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 // dotenv.config();
 
-const SignupPage = ({ isLoggedIn, setIsLoggedIn }) => {
+const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
   const [status, setStatus] = useState("idle")
 
   const FirstName = useRef();
@@ -40,7 +40,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn }) => {
     try {
       setStatus("pending")
 
-      const response = await axios.post(`https://mendai.onrender.com/api/Register`, data);
+      const response = await axios.post(`http://localhost:8080/api/Register`, data);
       console.log(response.data);
       setStatus("successs")
       setTimeout(() => {
@@ -172,7 +172,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn }) => {
 
     {/* OAuth Buttons */}
     <div className="flex flex-col gap-3">
-      <button
+      <button onClick={handleGoogleLogin}
         className="w-full border py-2 rounded-lg font-bold hover:bg-gray-100 transition"
         style={{
           borderColor: "#d1d5db", // Light gray border
