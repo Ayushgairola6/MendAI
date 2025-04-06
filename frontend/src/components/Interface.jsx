@@ -1,201 +1,118 @@
-import React, { useRef, useState, useEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
-import Navbar from "./Navbar";
 import axios from "axios";
-const InterFace = ({ user,isLoggedIn, setIsLoggedIn,color }) => {
+import Navbar from "./Navbar";
+import { motion, AnimatePresence } from "framer-motion";
 
+const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   const InputRef = useRef(null);
   const socket = useRef(null);
-  const [messages,setMessages]= useState([]);
-  const [newMessages,setNewMessages] = useState([])
+  const [messages, setMessages] = useState([]);
   const navigate = useNavigate();
+  const bottomRef = useRef(null);
 
-// fetch chat history
   useEffect(() => {
-    if (isLoggedIn === false) return;
- 
-   const handleChatHistory = async ()=>{
-    try{
-      const response = await axios.get("http://localhost:8080/api/chat/history/data",{withCredentials:true});
-      // console.log(response.data);
-      setMessages(response.data)
-    }catch(error){
-      console.log(error);
-      throw new Error("Error while fetching chat history");
-    }
-   }
-  handleChatHistory();
-  }, [isLoggedIn])
+    if (!isLoggedIn) return;
 
+    const handleChatHistory = async () => {
+      try {
+        const response = await axios.get("http://localhost:8080/api/chat/history/data", { withCredentials: true });
+        setMessages(response.data);
+      } catch (error) {
+        console.error(error);
+        throw new Error("Error while fetching chat history");
+      }
+    };
+    handleChatHistory();
+  }, [isLoggedIn]);
 
-  // connect to the socket
   useEffect(() => {
-    if (isLoggedIn === false) return;
+    if (!isLoggedIn) return;
 
-    // Initialize socket connection
     socket.current = io("http://localhost:8080");
 
-    //  default connection event to connect with the server
-    socket.current.on("connect", () => {
-      // console.log("Socket connection started");
-    });
+    socket.current.on("connect", () => {});
 
-    //  join event listening
     socket.current.on("newMessage", (data) => {
-      console.log("message has been sent and recieved")
-      // console.log(data);
-      setMessages((prev)=>[...prev,data]);
+      setMessages((prev) => [...prev, data]);
     });
 
-    // Cleanup function to close the socket connection
     return () => {
       if (socket.current) {
         socket.current.disconnect();
-        // console.log("Socket disconnected");
       }
     };
   }, [isLoggedIn]);
 
   function SendMessage() {
-    if (isLoggedIn === false && InputRef.current.value) {
-      navigate("/Register")
+    if (!isLoggedIn && InputRef.current.value) {
+      navigate("/Register");
       return;
     }
-    if (InputRef.current.value === "" || !user ) return;
+    if (InputRef.current.value === "" || !user) return;
 
-    socket.current.emit("message", { message: InputRef.current.value,user_id:user.id ,sender_name:user.name});
-    InputRef.current.value = "" 
+    socket.current.emit("message", { message: InputRef.current.value, user_id: user.id, sender_name: user.name });
+    InputRef.current.value = "";
   }
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+  return (
+    <div className="h-screen max-h-screen flex flex-col items-center justify-center p-2 bg-gray-950 text-white">
+      <div className="flex flex-col w-full  bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+ 
 
-  return (<>
-    {/* main body */}
-
-    <div onClick={()=>console.log(color)}
-  className="h-screen max-h-screen flex flex-col items-center justify-center p-2"
-  style={{
-    background:`${color==="Light"?"linear-gradient(to right, white, whitesmoke)":"linear-gradient(to right, black,navyblue)"}`, 
-  }}
->
-  <div
-    className="border rounded-lg w-full md:w-full h-full overflow-auto relative"
-    style={{
-      borderColor: "#dbdbdb", // Light gray border
-      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)", // Subtle shadow
-    }}
-  >
-    {/* Header */}
-    <div
-      className="w-full p-2 font-bold text-lg sticky top-0 flex items-center justify-between"
-      style={{
-        background: "linear-gradient(to right, black, gray, black)", // Instagram gradient
-        color: "#ffffff", // White text
-      }}
-    >
-      <label style={{ fontFamily: "Arial, sans-serif" }}>ALICE</label>
-      <img
-        src=".\src\assets\react.svg"
-        alt=""
-        style={{
-          width: "28px",
-          height: "28px",
-          borderRadius: "50%",
-        }}
-      />
-    </div>
-
-    {/* Messages */}
-    {messages.length > 0 && user !== null ? (
-      messages.map((msg, index) => (
-        <div
-          key={index}
-          className={`${
-            msg.user_id === user.id ? "text-left" : "text-right"
-          } p-2`}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: msg.user_id === user.id ? "flex-start" : "flex-end",
-            marginTop: "8px",
-          }}
-        >
-          <ul
-            className="font-bold text-sm"
-            style={{
-              color: "#262626", // Dark text for names
-              fontFamily: "Arial, sans-serif",
-            }}
-          >
-            {msg.user_id === user.id ? msg.name : "Alice"}
-          </ul>
-          <ul
-            style={{
-              color:
-                msg.user_id === user.id
-                  ? "#009688" // Green for user messages
-                  : "#405de6", // Blue for Alice's messages
-              fontFamily: "Arial, sans-serif",
-              fontSize: "14px", // Compact font size
-            }}
-          >
-            {msg.message}
-          </ul>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
+          {messages.length > 0 && user !== null ? (
+            <AnimatePresence>
+              {messages.map((msg, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className={`flex ${msg.user_id === user.id ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-md ${msg.user_id === user.id ? "bg-gradient-to-br from-blue-600 to-blue-400 text-white" : "bg-gray-700 text-white"}`}
+                  >
+                    <p className="text-lg font-bold text-gray-300 mb-1">{msg.user_id === user.id ? msg.name : "Alice"}</p>
+                    <p>{msg.message}</p>
+                  </div>
+                  <div ref={bottomRef}></div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400 animate-pulse">
+              Please! Be respectful. Alice responds based on your messages.
+            </div>
+          )}
         </div>
-      ))
-    ) : (
-      <div
-        style={{
-          color: "blue", // Instagram's muted gray
-          fontWeight: "bold",
-          fontFamily: "Arial, sans-serif",
-                  }}
-      className="h-full flex items-center cursor-pointer justify-center text-xl animate-pulse transition-all" >
-        Please! Be respectful. Alice responds based on your messages.
+
+        <div className="p-3 border-t border-gray-800 bg-gray-900 flex items-center">
+          <input
+            ref={InputRef}
+            type="text"
+            placeholder="Type your message..."
+            className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
+          />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.05 }}
+            onClick={SendMessage}
+            className="ml-3 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm hover:brightness-110 transition"
+          >
+            Send
+          </motion.button>
+        </div>
       </div>
-    )}
-  </div>
-
-  {/* Input and Button */}
-  <div
-    className="flex items-center justify-between w-full md:w-full mt-4 border rounded-lg"
-    style={{
-      borderColor: "#dbdbdb", // Light gray border
-      boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)", // Subtle shadow
-      height: "60px", // Reduced height for phones
-      padding: "4px 8px",
-    }}
-  >
-    <input
-      ref={InputRef}
-      className="w-4/5 py-2 px-3 font-bold rounded-lg focus:outline-none focus:ring-0"
-      placeholder="Enter your message here"
-      type="text"
-      style={{
-        background: "linear-gradient(to right, #f8f8f8, #ffffff)", // Light input gradient
-        color: "#262626", // Dark text
-        fontFamily: "Arial, sans-serif",
-        fontSize: "14px", // Smaller text for compact view
-      }}
-    />
-    <button
-      onClick={SendMessage}
-      className="cursor-pointer px-4 py-2 font-bold rounded-lg"
-      type="submit"
-      style={{
-        background:
-          "linear-gradient(to right, #833ab4, #fd1d1d, #fcb045)", // Instagram gradient
-        color: "#ffffff", // White text
-        boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)", // Shadow effect
-        fontSize: "14px", // Compact font size
-      }}
-    >
-      Send
-    </button>
-  </div>
-</div>
-
-
-  </>)
-}
+    </div>
+  );
+};
 
 export default InterFace;

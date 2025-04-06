@@ -43,7 +43,6 @@ export const googleAuth = async (req, res) => {
             "INSERT INTO users (email, google_id, name, image) VALUES ($1, $2, $3, $4) RETURNING *",
             [email, googleId, name, avatar]
         );
-        console.log(newUser.rows)
         // Generate JWT token
         const token = jwt.sign({ userId: newUser.rows[0].id, email: newUser.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
         res.cookie("auth_token", token, {

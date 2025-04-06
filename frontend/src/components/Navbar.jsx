@@ -12,7 +12,7 @@ const Navbar = ({color,setColor,user}) => {
   return <>
 
     <div className="bg-black px-6  py-2 text-white flex items-center justify-between sticky top-0 left-0 w-full z-999 font-bold text-sm">
-      <img className='border-0 rounde-full h-10 w-10' src=".\src\assets\react.svg" alt="" />
+      <Link to="/" className='font-serif text-3xl'>ALICE</Link>
       <div className='flex items-center justify-evenly gap-4'>
         <Link> <img className='border-0 rounded-full h-10 w-10' src={user?user.image:"/"} alt="/" /></Link>
         <Link onClick={() => {
@@ -22,7 +22,7 @@ const Navbar = ({color,setColor,user}) => {
           setVisible(!visible)
         }} className='relative flex items-center justify-center gap-1'>Account
         </Link>
-        <EditModal visible={visible} />
+        <EditModal setVisible={setVisible} visible={visible} />
 
         <Link onClick={() => {
           if (visible === true) {

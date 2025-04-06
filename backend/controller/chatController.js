@@ -41,7 +41,6 @@ io.on("connection", (socket) => {
     const AI_ID = 0;
 
     socket.on("message", async(data) => {
-        console.log("Received message:", data);
 
         if (!data.message || !data.user_id || !data.sender_name) {
             console.log("message is incomplete")
@@ -81,7 +80,6 @@ io.on("connection", (socket) => {
 
 // // **AI Response Logic (if applicable)**
 const aiResponse = await GetAIResponse(data.message,sender_id);
-console.log(aiResponse)
 if(!aiResponse){
     console.log("Ai response generation error");
 }

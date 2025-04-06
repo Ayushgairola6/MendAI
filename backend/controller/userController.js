@@ -1,6 +1,6 @@
 import { pool } from "../Database.js";
 import multer from 'multer';
-
+import { uploadToFirebase } from "../firebaseConfig/firebaseController.js";
 export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 * 20 } })
 
 export const GetAccountData = (req, res) => {
@@ -40,8 +40,16 @@ export const uploadUserImages = async (req, res) => {
             return res.status(400).json({ success: true, message: "No session Id found" });
         }
 
-        console.log(req.user,"ki Image",Image);
-        return res.status(200).json({message:"Uploaded"});
+       const ImageUrl = await uploadToFirebase(Image,"MendAI/");
+       const query = `UPDATE users SET image = $1 WHERE id = $2;
+`;
+       const response = await pool.query(query ,[ImageUrl,UserId]);
+
+       if(response.rowCount===0){
+        return res.status(400).json({message:"Unable to update your profile!"})
+       }
+
+        return res.status(200).json({message:"Successfully uploaded your image"});
     } catch (error) {
         throw error;
     }
