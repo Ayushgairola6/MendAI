@@ -16,7 +16,7 @@ const EditProfile = ({ user }) => {
         const form = new FormData();
         form.append("image", Image)
         try {
-            const response = await axios.post("http://localhost:8080/api/update/profile", form, {
+            const response = await axios.post("https://mendai.onrender.com/api/update/profile", form, {
                 withCredentials: true,
                 headers: {
                     "Content-Type": "multipart/form-data"

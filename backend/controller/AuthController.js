@@ -20,7 +20,7 @@ export const googleAuth = async (req, res) => {
 
             // if user signed up manually
             if (!user.google_id || user.google_id == null) {
-                return res.redirect("http://localhost:5173/login?error=manual-only")
+                return res.redirect("https://mendai.netlify.app/oauth-success")
             }
             // if user previously ever signed up with their google account we can give them access 
             if (data.rows[0].google_id) {
@@ -34,7 +34,7 @@ export const googleAuth = async (req, res) => {
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
             }
-            return res.redirect(`http://localhost:5173/oauth-success`);;
+            return res.redirect(`https://mendai.netlify.app/oauth-success`);;
         }
 
 
@@ -51,7 +51,7 @@ export const googleAuth = async (req, res) => {
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
         });
-        return res.redirect("http://localhost:5173/oauth-success");
+        return res.redirect("https://mendai.netlify.app/oauth-success");
 
     } catch (error) {
         console.log(error)
@@ -119,7 +119,7 @@ export const Login = (req, res) => {
                 return res.status(404).json({ success: false, message: "No user found" });
             } else if (result.rows.length > 0 && result.rows[0].google_id) {
               
-             return res.status(400).json({message:"You previously loggedIn using this account using google please use that method"}).redirect("http://localhost:5173/oauth-sucess");
+             return res.status(400).json({message:"You previously loggedIn using this account using google please use that method"}).redirect("https://mendai.netlify.app/oauth-sucess");
             }
 
             const user = result.rows[0];

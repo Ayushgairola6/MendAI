@@ -7,7 +7,7 @@ export default function OAuthSuccess({isLoggedIn,setIsLoggedIn,handelAccountDeta
   useEffect(()=>{
         const Verify = async ()=>{
           try{
-          const response = await axios.get("http://localhost:8080/api/verify/account",{withCredentials:true});
+          const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true});
           if (response.data.message === "authorized") {
             setIsLoggedIn(true);
             handelAccountDetails(); 
