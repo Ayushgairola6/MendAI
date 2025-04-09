@@ -48,7 +48,6 @@ io.on("connection", (socket) => {
     let counter = 0;
 
     socket.on("message", async (data) => {
-        console.log(data)
         if (!data.message || !data.user_id || !data.sender_name) {
             console.log("message is incomplete")
             return;
@@ -94,20 +93,24 @@ io.on("connection", (socket) => {
             RETURNING count;
         `, [roomName]);
         const messageCount = result.rows[0].count;
+        let context;
         // generate context
         if (messageCount >= 9) {
-
+            context = await generateContext(data.message, sender_id);
+            const query = `INSERT INTO chat_context (room_name,summary) VALUES ($1,$2)`;
+            const res = await pool.query(query, [roomName, context.response]);
             // Reset the counter
             await pool.query(`UPDATE context_counter SET count = 0 WHERE room_name = $1`, [roomName]);
-        } 
-            const context = await generateContext(data.message, sender_id);
+        } else {
+            context = { response: data.message };
+        }
         // // **AI Response Logic (if applicable)**
         if (!context) {
             console.log("context not found")
             return;
         }
 
-        const aiResponse = await GetAIResponse(data.message, sender_id, context.response);
+        const aiResponse = await GetAIResponse(data.message, sender_id, context.response, roomName);
         if (!aiResponse) {
             console.log("Ai response generation error");
             return;
@@ -119,7 +122,7 @@ io.on("connection", (socket) => {
             [roomName, aiResponse.response, 'model'],
             (err, result) => {
                 if (err) {
-                    console.error("Database error:", err);
+                    console.error("Database error:", err)
                     return;
                 }
                 if (result.rowCount === 0) {
