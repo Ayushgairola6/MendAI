@@ -16,7 +16,7 @@ const Router = express.Router()
 dotenv.config();
 //cors configured to give frontend access to send cookies safely
 app.use(cors({
-	origin: ["http://localhost:5173", "https://mendai.netlify.app"], credentials: true,
+	origin: ["http://localhost:5173", "https://mendai.netlify.app","http://192.168.42.208:19006"], credentials: true,
 }));
 app.use(express.json())
 app.use(cookieParser());

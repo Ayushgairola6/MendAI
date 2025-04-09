@@ -24,7 +24,6 @@ export const googleAuth = async (req, res) => {
             }
             // if user previously ever signed up with their google account we can give them access 
             if (data.rows[0].google_id) {
-                console.log(data.rows)
                 const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
                 // append the token with the cookies of
                 res.cookie("auth_token", token, {
@@ -106,7 +105,6 @@ export const Login = (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ message: "All fields are mandatory" });
         }
-
         // Get user from database
         const checkQuery = `SELECT * FROM users WHERE email = $1`;
         pool.query(checkQuery, [email], (err, result) => {
@@ -142,7 +140,7 @@ export const Login = (req, res) => {
                     sameSite: "none",
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
-                return res.status(200).json({ success: true, message: "Logged in successfully" });
+                return res.status(200).json({ success: true, message: "Logged in successfully" ,token});
             });
         });
 

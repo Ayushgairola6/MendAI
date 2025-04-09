@@ -17,7 +17,7 @@ function App() {
   //  function to fetch user details
 async  function handelAccountDetails (){
   try{  
-    const response = await axios.get(`https://mendai.onrender.com/api/account/data`,{withCredentials:true});
+    const response = await axios.get(`http://localhost:8080/api/account/data`,{withCredentials:true});
     console.log(response.data)
     setUser(response.data.info);
   }catch(error){
@@ -29,7 +29,7 @@ async  function handelAccountDetails (){
     useEffect(()=>{
       const Verify = async ()=>{
         try{
-        const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true});
+        const response = await axios.get("http://localhost:8080/api/verify/account",{withCredentials:true});
         if(response.data.message==="authorized"){
           setIsLoggedIn(true);
         }
@@ -46,7 +46,7 @@ async  function handelAccountDetails (){
  
     const handleGoogleLogin =()=>{
      
-      window.location.href = "https://mendai.onrender.com/api/auth/google";
+      window.location.href = "http://localhost:8080/api/auth/google";
      }
 
 

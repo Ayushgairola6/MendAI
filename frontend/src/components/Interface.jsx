@@ -17,7 +17,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", { withCredentials: true });
+        const response = await axios.get("http://localhost:8080/api/chat/history/data", { withCredentials: true });
         setMessages(response.data);
       } catch (error) {
         console.error(error);
@@ -28,13 +28,23 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    const token = localStorage.getItem("auth_token");
+    if (isLoggedIn===false) return;
 
-    socket.current = io("https://mendai.onrender.com");
+    socket.current = io("http://localhost:8080",{
+      auth:{
+        token:token
+      },withCredentials: true,
+      
+    });
+    console.log(socket.current)
 
-    socket.current.on("connect", () => {});
+    socket.current.on("connect", () => {
+      console.log("socket has connected")
+    });
 
     socket.current.on("newMessage", (data) => {
+      console.log(data)
       setMessages((prev) => [...prev, data]);
     });
 
@@ -61,8 +71,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     }
   }, [messages]);
   return (
-    <div className="h-screen max-h-screen flex flex-col items-center justify-center p-2 bg-gray-950 text-white">
-      <div className="flex flex-col w-full  bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+    <div onClick={()=>console.log(isLoggedIn)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-gray-950 text-white">
+      <div className="flex flex-col w-full min-h-[90vh]  bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
  
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
