@@ -40,7 +40,9 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
     try {
       setStatus("pending")
 
-      const response = await axios.post(`http://localhost:8080/api/Register`, data);
+      const response = await axios.post(`https://mendai.onrender.com/api/Register`, data,{
+        withCredentials:true
+      });
       console.log(response.data);
       setStatus("successs")
       setTimeout(() => {
@@ -49,7 +51,6 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
     } catch (error) {
       setStatus('idle');
 
-      console.log(error);
       throw new Error("error while creating an account!")
     }
   }
@@ -182,7 +183,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
       >
         Continue with Google
       </button>
-      <button
+      {/* <button
         className="w-full border py-2 rounded-lg font-bold hover:bg-gray-100 transition"
         style={{
           borderColor: "#d1d5db", // Light gray border
@@ -191,7 +192,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
         }}
       >
         Continue with GitHub
-      </button>
+      </button> */}
     </div>
     <p
       className="text-center font-semibold"

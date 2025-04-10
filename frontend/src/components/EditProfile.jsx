@@ -1,39 +1,44 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from './Navbar';
 import axios from 'axios';
-
-const EditProfile = ({ user }) => {
+import { FaHeart } from "react-icons/fa";
+const EditProfile = ({ user, handelAccountDetails }) => {
 
     const DateRef = useRef();
     const ImageRef = useRef();
     const [visible, setVisible] = useState(false);
-
+    const [uploading, setUploading] = useState('idle');
 
 
     const AddImage = async (Image) => {
-        console.log("Initiated")
+        const token = localStorage.getItem("auth_token");
         if (!Image) return;
         const form = new FormData();
         form.append("image", Image)
         try {
-            const response = await axios.post("http://localhost:8080/api/update/profile", form, {
+            setUploading("pending");
+            const response = await axios.post("https://mendai.onrender.com/api/update/profile", form, {
                 withCredentials: true,
                 headers: {
-                    "Content-Type": "multipart/form-data"
+                    "Content-Type": "multipart/form-data",
+                    'Authorization': `Bearer ${token}`
                 }
             });
-            console.log(response.data);
+            if (response.data.message = "Successfully uploaded your image") {
+                handelAccountDetails();
+                setUploading("idle");
+            }
         } catch (error) {
-            console.log(error)
-            // throw new Error(error);
+            setUploading("idle");
+            throw new Error(error);
         }
 
     }
 
 
     return (<>
-        <div className="h-screen ">
-            {/* <h1 className="text-center text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-purple-600 font-semibold text-2xl">{user ? user.name : "Your"}'s DashBoard</h1> */}
+        <div style={{backgroundColor:"black",borderTop:"1px solid lightgray",color:"white"}} className="h-screen ">
+          
             {/* the top profile data part */}
             <div className="flex items-center justify-start gap-10 p-2">
                 <div className="flex flex-col items-center justify-center gap-3">
@@ -41,11 +46,11 @@ const EditProfile = ({ user }) => {
                         setVisible(true)
                     }} onMouseLeave={() => setVisible(false)} className="relative h-30 w-30 rounded-full border border-sky-300 cursor-pointer">
                         <img className=" rounded-full h-full w-full  " src={user ? user.image : "/"} alt={user ? user.name : "/"} />
-                         <span className="text-sm  text-red-700">* hover/click on the image to add a new image</span>
+                        <span className="text-xs p-4 text-center text-red-700">* hover/click on the image to add a new image</span>
                         <div onClick={() => {
                             ImageRef.current.click()
                         }} className={`${visible === true ? "opacity-100" : "opacity-0"} transition-all  absolute top-0 left-0 flex  rounded-full h-full w-full bg-black/30`}>
-                            <ul className='m-auto bg-black/70 text-white p-2 rounded-full'>
+                            <ul className='m-auto bg-white/70 text-black font-bold p-2 rounded-full'>
                                 Add
                             </ul>
                         </div>
@@ -64,8 +69,8 @@ const EditProfile = ({ user }) => {
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-3">
-                    <ul className="text-xl font-semibold">{user ? user.name : "No found"}</ul>
-                    <ul className="text-xl font-semibold">{user ? user.email : "Not found"}</ul>
+                    <ul className="text-xl font-semibold flex items-center justify-center gap-2"><FaHeart color="red"/>{user ? user.name : "No found"} </ul>
+                    <ul className="text-sm font-semibold">{user ? user.email : "Not found"}</ul>
                     {/* <button style={{ background: "linear-gradient(to right , lime,skyblue)", }} className="px-2 py-1 cursor-pointer rounded-2xl shadow-sm shadow-gray-800 hover:scale-105 transition-all font-bold ">Update!</button> */}
                 </div>
 

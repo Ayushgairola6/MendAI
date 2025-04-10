@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
+import cookie from 'cookie'
 import { Server } from 'socket.io';
 import { pool } from "../Database.js";
 import { GetAIResponse } from "./ModelResponseController.js";
@@ -19,7 +20,8 @@ export const io = new Server(server, {
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
-    const cookieToken = socket.handshake.cookies;
+    const cookieToken = socket.handshake.headers.cookies?cookie.parse(socket.handshake.headers.cookies):{};
+    console.log(cookieToken);
     const authHeader = socket.handshake.auth.token;
     let token;
 

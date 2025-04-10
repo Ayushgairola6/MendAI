@@ -16,8 +16,11 @@ function App() {
 
   //  function to fetch user details
 async  function handelAccountDetails (){
+  const token = localStorage.getItem("auth_token");
   try{  
-    const response = await axios.get(`http://localhost:8080/api/account/data`,{withCredentials:true});
+    const response = await axios.get(`https://mendai.onrender.com/api/account/data`,{withCredentials:true,headers:{
+      'Authorization':`Bearer ${token}`
+    }});
     console.log(response.data)
     setUser(response.data.info);
   }catch(error){
@@ -29,7 +32,7 @@ async  function handelAccountDetails (){
     useEffect(()=>{
       const Verify = async ()=>{
         try{
-        const response = await axios.get("http://localhost:8080/api/verify/account",{withCredentials:true});
+        const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true});
         if(response.data.message==="authorized"){
           setIsLoggedIn(true);
         }
@@ -46,7 +49,7 @@ async  function handelAccountDetails (){
  
     const handleGoogleLogin =()=>{
      
-      window.location.href = "http://localhost:8080/api/auth/google";
+      window.location.href = "https://mendai.onrender.com/api/auth/google";
      }
 
 
@@ -60,7 +63,7 @@ async  function handelAccountDetails (){
       <Route path='/Register' element={<SignupPage handleGoogleLogin={handleGoogleLogin}/>}/>
       <Route path='/' element={<InterFace color={color} user={user} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn}/>}/>
      <Route path='/Login' element={<Login handleGoogleLogin={handleGoogleLogin} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn}/>}/>
-     <Route path="/DashBoard" element={<EditProfile user={user}/>} />
+     <Route path="/DashBoard" element={<EditProfile user={user} handelAccountDetails={handelAccountDetails}/>} />
      <Route path='/oauth-success' element={<OAuthSuccess isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails}/>}/>
       </Routes>
   </Router> 

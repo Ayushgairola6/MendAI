@@ -33,7 +33,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn,handleGoogleLogin }) => {
     try {
       setStatus("pending")
       // with credentials so that cookies can be accepted and sent back to the server
-      const response = await axios.post(`http://localhost:8080/api/Login`, data, { withCredentials: true });
+      const response = await axios.post(`https://mendai.onrender.com/api/Login`, data, { withCredentials: true });
       localStorage.setItem("auth_token",response.data.token);
       setIsLoggedIn(true);
       setStatus("successs")
@@ -149,7 +149,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn,handleGoogleLogin }) => {
         >
           Continue with Google
         </button>
-        <button
+        {/* <button
           className="w-full border py-2 rounded-lg font-bold hover:bg-gray-100 transition"
           style={{
             borderColor: "#d1d5db", // Light gray border
@@ -157,7 +157,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn,handleGoogleLogin }) => {
           }}
         >
           Continue with GitHub
-        </button>
+        </button> */}
       </div>
       {/* Signup Link */}
       <p

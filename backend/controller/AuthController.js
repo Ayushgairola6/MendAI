@@ -50,8 +50,8 @@ export const googleAuth = async (req, res) => {
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
         });
-        return res.redirect("https://mendai.netlify.app/oauth-success");
-
+         res.redirect("https://mendai.netlify.app/oauth-success");
+         return res.status(200).json(token);
     } catch (error) {
         console.log(error)
         throw new Error("Error while connecting to your google account!")

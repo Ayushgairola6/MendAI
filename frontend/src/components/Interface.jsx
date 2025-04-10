@@ -13,11 +13,16 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   const bottomRef = useRef(null);
 
   useEffect(() => {
+    const token = localStorage.getItem("auth_token")
     if (!isLoggedIn) return;
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("http://localhost:8080/api/chat/history/data", { withCredentials: true });
+        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", { withCredentials: true ,
+          headers:{
+            'Authorization':`Bearer ${token}`
+          }
+        });
         setMessages(response.data);
       } catch (error) {
         console.error(error);
@@ -31,20 +36,18 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn===false) return;
 
-    socket.current = io("http://localhost:8080",{
+    socket.current = io("https://mendai.onrender.com",{
       auth:{
         token:token
       },withCredentials: true,
       
     });
-    console.log(socket.current)
 
     socket.current.on("connect", () => {
-      console.log("socket has connected")
+      // console.log("socket has connected")
     });
 
     socket.current.on("newMessage", (data) => {
-      console.log(data)
       setMessages((prev) => [...prev, data]);
     });
 
