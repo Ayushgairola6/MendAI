@@ -40,7 +40,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn ,handleGoogleLogin}) => {
     try {
       setStatus("pending")
 
-      const response = await axios.post(`https://mendai.onrender.com/api/Register`, data,{
+      const response = await axios.post(`https://mendai.onrender.com0/api/Register`, data,{
         withCredentials:true
       });
       console.log(response.data);

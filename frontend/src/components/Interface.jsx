@@ -18,7 +18,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", {
+        const response = await axios.get("https://mendai.onrender.com0/api/chat/history/data", {
           withCredentials: true,
           headers: {
             'Authorization': `Bearer ${token}`
@@ -37,7 +37,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn === false) return;
 
-    socket.current = io("https://mendai.onrender.com", {
+    socket.current = io("https://mendai.onrender.com0", {
       auth: {
         token: token
       }, withCredentials: true,

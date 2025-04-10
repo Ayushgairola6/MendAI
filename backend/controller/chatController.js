@@ -23,7 +23,7 @@ io.use((socket, next) => {
   try {
       // Parse cookies safely
       const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
-      const tokenFromCookie = cookies["auth-token"];
+      const tokenFromCookie = cookies["auth_token"];
       const tokenFromAuth = socket.handshake.auth?.token; // Handle missing auth field safely
       console.log("auth header token",tokenFromAuth);
       console.log("auth from cookie",tokenFromCookie)

@@ -33,7 +33,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn,handleGoogleLogin }) => {
     try {
       setStatus("pending")
       // with credentials so that cookies can be accepted and sent back to the server
-      const response = await axios.post(`https://mendai.onrender.com/api/Login`, data, { withCredentials: true });
+      const response = await axios.post(`https://mendai.onrender.com0/api/Login`, data, { withCredentials: true });
       localStorage.setItem("auth_token",response.data.token);
       setIsLoggedIn(true);
       setStatus("successs")

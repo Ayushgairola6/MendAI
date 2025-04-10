@@ -18,7 +18,7 @@ function App() {
 async  function handelAccountDetails (){
   const token = localStorage.getItem("auth_token");
   try{  
-    const response = await axios.get(`https://mendai.onrender.com/api/account/data`,{withCredentials:true,headers:{
+    const response = await axios.get(`https://mendai.onrender.com0/api/account/data`,{withCredentials:true,headers:{
       'Authorization':`Bearer ${token}`
     }});
     console.log(response.data)
@@ -32,7 +32,7 @@ async  function handelAccountDetails (){
     useEffect(()=>{
       const Verify = async ()=>{
         try{
-        const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true});
+        const response = await axios.get("https://mendai.onrender.com0/api/verify/account",{withCredentials:true});
         if(response.data.message==="authorized"){
           setIsLoggedIn(true);
         }
@@ -49,7 +49,7 @@ async  function handelAccountDetails (){
  
     const handleGoogleLogin =()=>{
      
-      window.location.href = "https://mendai.onrender.com/api/auth/google";
+      window.location.href = "https://mendai.onrender.com0/api/auth/google";
      }
 
 
