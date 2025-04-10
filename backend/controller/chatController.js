@@ -23,15 +23,13 @@ io.use((socket, next) => {
     const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
     const tokenFromCookie = cookies["auth-token"];
     const tokenFromAuth = socket.handshake.auth?.token;
-    console.log(tokenFromAuth)
-    const authHeader = socket.handshake.auth.token;
     let token;
 
     // Prefer cookie token, fallback to Bearer token
-    if (tokenFromAuth) {
-        token = tokenFromAuth;
-    } else if (authHeader) {
-        token = authHeader
+    if (tokenFromCookie) {
+        token = tokenFromCookie;
+    } else if (tokenFromAuth) {
+        token = tokenFromAuth
     } else {
         return;
     }
