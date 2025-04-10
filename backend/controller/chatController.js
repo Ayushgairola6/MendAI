@@ -27,8 +27,12 @@ io.use((socket, next) => {
 
     // Prefer cookie token, fallback to Bearer token
     if (tokenFromCookie) {
+        console.log(tokenFromCookie);
+
         token = tokenFromCookie;
     } else if (tokenFromAuth) {
+        console.log(tokenFromAuth)
+
         token = tokenFromAuth
     } else {
         return;
