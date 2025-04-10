@@ -11,7 +11,7 @@ export const GetAccountData = (req, res) => {
             return res.status(400).json({ success: true, message: "No session Id found" });
         }
 
-        const query = `SELECT * FROM users WHERE id = $1`;
+        const query = `SELECT id,email,dob,image,name,password FROM users WHERE id = $1`;
         pool.query(query, [UserId], (err, result) => {
             if (err) {
                 return res.status(500).json({ success: false, message: "Internal server error! " })

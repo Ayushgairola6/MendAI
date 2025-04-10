@@ -20,31 +20,29 @@ export const io = new Server(server, {
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
-    const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
-    const tokenFromCookie = cookies["auth-token"];
-    const tokenFromAuth = socket.handshake.auth?.token;
-    let token;
-
-    // Prefer cookie token, fallback to Bearer token
-    if (tokenFromCookie) {
-        console.log(tokenFromCookie);
-
-        token = tokenFromCookie;
-    } else if (tokenFromAuth) {
-        console.log(tokenFromAuth)
-
-        token = tokenFromAuth
-    } else {
-        return;
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        socket.user = decoded;
+  try {
+      // Parse cookies safely
+      const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
+      const tokenFromCookie = cookies["auth-token"];
+      const tokenFromAuth = socket.handshake.auth?.token; // Handle missing auth field safely
+      console.log("auth header token",tokenFromAuth);
+      console.log("auth from cookie",tokenFromCookie)
+      const finalToken = tokenFromCookie || tokenFromAuth; // Prefer cookies but fallback to auth token
+      if (!finalToken) {
+        return next(new Error("Authentication error: No token provided"));
+      }
+      // Verify JWT token
+      jwt.verify(finalToken, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+          console.log("Error while verifying token:", err.message);
+          return next(new Error("Authentication error: Invalid token"));
+        }
+        socket.user = decoded; // Attach user info to socket
         next();
-    } catch (error) {
-        console.error("Token verification failed:", error.message);
-        return
+      });
+    } catch (err) {
+      console.error("Socket middleware error:", err.message);
+      next(new Error("Internal Server Error"));
     }
 })
 
