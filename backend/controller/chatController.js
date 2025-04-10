@@ -14,8 +14,11 @@ export const app = express();
 export const server = http.createServer(app);
 export const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173", 'https://mendai.netlify.app'], credentials: true
-    }
+         origin: ["http://localhost:5173", "https://mendai.netlify.app"],
+        methods: ["GET", "POST"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+    },transports: ['websocket','polling']
 });//new socket io instance object
 
 //verifying and getting user token when a socket connection is established

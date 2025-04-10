@@ -17,7 +17,7 @@ const EditProfile = ({ user, handelAccountDetails }) => {
         form.append("image", Image)
         try {
             setUploading("pending");
-            const response = await axios.post("https://mendai.onrender.com0/api/update/profile", form, {
+            const response = await axios.post("https://mendai.onrender.com/api/update/profile", form, {
                 withCredentials: true,
                 headers: {
                     "Content-Type": "multipart/form-data",

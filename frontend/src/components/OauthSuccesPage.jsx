@@ -5,12 +5,17 @@ export default function OAuthSuccess({isLoggedIn,setIsLoggedIn,handelAccountDeta
   const navigate = useNavigate();
 
   useEffect(()=>{
-    const urlParams = URLSearchParams(window.location.search);
+    const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
-    localStorage.setItem("auth_token",token);
+
+    if (token) {
+      localStorage.setItem("auth_token", token);
+    }
+
+
         const Verify = async ()=>{
           try{
-          const response = await axios.get("https://mendai.onrender.com0/api/verify/account",{withCredentials:true,headers:{
+          const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true,headers:{
             'Authorization':`Bearer ${token}`
           }});
           if (response.data.message === "authorized") {
