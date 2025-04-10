@@ -18,9 +18,10 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", { withCredentials: true ,
-          headers:{
-            'Authorization':`Bearer ${token}`
+        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", {
+          withCredentials: true,
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
         });
         setMessages(response.data);
@@ -34,13 +35,13 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
-    if (isLoggedIn===false) return;
+    if (isLoggedIn === false) return;
 
-    socket.current = io("https://mendai.onrender.com",{
-      auth:{
-        token:token
-      },withCredentials: true,
-      
+    socket.current = io("https://mendai.onrender.com", {
+      auth: {
+        token: token
+      }, withCredentials: true,
+
     });
 
     socket.current.on("connect", () => {
@@ -58,7 +59,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     };
   }, [isLoggedIn]);
 
-  function SendMessage() {
+  function SendMessage(e) {
+    e.preventDefault();
     if (!isLoggedIn && InputRef.current.value) {
       navigate("/Register");
       return;
@@ -74,9 +76,9 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     }
   }, [messages]);
   return (
-    <div onClick={()=>console.log(isLoggedIn)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-gray-950 text-white">
+    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-gray-950 text-white">
       <div className="flex flex-col w-full min-h-[90vh]  bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
- 
+
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
           {messages.length > 0 && user !== null ? (
@@ -117,14 +119,14 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
           <motion.button
             whileTap={{ scale: 0.95 }}
             whileHover={{ scale: 1.05 }}
-            onClick={SendMessage}
+            // onClick={()SendMessage}
             className="ml-3 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm hover:brightness-110 transition"
           >
             Send
           </motion.button>
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 

@@ -20,14 +20,16 @@ export const io = new Server(server, {
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
-    const cookieToken = socket.handshake.headers.cookies?cookie.parse(socket.handshake.headers.cookies):{};
-    console.log(cookieToken);
+    const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
+    const tokenFromCookie = cookies["auth-token"];
+    const tokenFromAuth = socket.handshake.auth?.token;
+    console.log(tokenFromAuth)
     const authHeader = socket.handshake.auth.token;
     let token;
 
     // Prefer cookie token, fallback to Bearer token
-    if (cookieToken) {
-        token = cookieToken;
+    if (tokenFromAuth) {
+        token = tokenFromAuth;
     } else if (authHeader) {
         token = authHeader
     } else {
@@ -47,7 +49,6 @@ io.use((socket, next) => {
 // starting a new socket connection
 io.on("connection", (socket) => {
     const AI_ID = 0;
-    let counter = 0;
 
     socket.on("message", async (data) => {
         if (!data.message || !data.user_id || !data.sender_name) {
@@ -138,7 +139,6 @@ io.on("connection", (socket) => {
         );
 
 
-        counter++;
     });
 
     socket.on("disconnect", () => {
