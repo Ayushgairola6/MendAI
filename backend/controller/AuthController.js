@@ -76,8 +76,7 @@ export const googleMobileAuth =(req,res)=>{
 
             // if user signed up manually
             if (!user.google_id || user.google_id == null) {
-                return res.redirect("https://mendai.netlify.app/oauth-success")
-            }
+               return res.redirect(`mendai://oauth-success?token=null`);
             // if user previously ever signed up with their google account we can give them access 
             if (data.rows[0].google_id) {
                 const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
@@ -88,7 +87,7 @@ export const googleMobileAuth =(req,res)=>{
                     sameSite: "none",
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
-            return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
+            return res.redirect(`mendai://oauth-success?token=${token}`);
             }
         }
 
@@ -106,7 +105,7 @@ export const googleMobileAuth =(req,res)=>{
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
         });
-       return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
+       return res.redirect(`mendai://oauth-success?token=${token}`);
          
     } catch (error) {
         console.log(error)
