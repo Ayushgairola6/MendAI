@@ -112,7 +112,7 @@ export const googleMobileAuth =async (req,res)=>{
         throw new Error("Error while connecting to your google account!")
     }
 }
-
+}
 // jwt based registration function
 export const Register = async (req, res) => {
     try {
