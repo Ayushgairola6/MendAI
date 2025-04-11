@@ -60,59 +60,60 @@ export const googleAuth = async (req, res) => {
 
 
 // seperate google auth controller for mobile apps
-export const googleMobileAuth =async (req,res)=>{
+export const googleMobileAuth = async (req, res) => {
     try {
-        // extracting the user data provided by google
-        const { googleId, name, email, avatar } = req.user.user;
-        // const email = req.user.user.email;
-        // const avatar = photos[0].value;
-
-        const query = `SELECT * FROM users WHERE email = $1`;
-        const data = await pool.query(query, [email]);
-
-        // if user exists and used manual email password method
-        if (data.rows.length > 0) {
-            const user = data.rows[0]
-
-            // if user signed up manually
-            if (!user.google_id || user.google_id == null) {
-               return res.redirect(`mendai://oauth-success?token=null`);
-            // if user previously ever signed up with their google account we can give them access 
-            if (data.rows[0].google_id) {
-                const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
-                // append the token with the cookies of
-                res.cookie("auth_token", token, {
-                    httpOnly: true,
-                    secure: true,
-                    sameSite: "none",
-                    maxAge: 4 * 24 * 60 * 60 * 1000,
-                });
-            return res.redirect(`mendai://oauth-success?token=${token}`);
-            }
+      // extracting the user data provided by google
+      const { googleId, name, email, avatar } = req.user.user;
+  
+      const query = `SELECT * FROM users WHERE email = $1`;
+      const data = await pool.query(query, [email]);
+  
+      // if user exists and used manual email password method
+      if (data.rows.length > 0) {
+        const user = data.rows[0];
+  
+        // if user signed up manually
+        if (!user.google_id || user.google_id == null) {
+          return res.redirect(`mendai://oauth-success?token=null`);
         }
-
-
-        // if the user is signing up for the first time
-        const newUser = await pool.query(
-            "INSERT INTO users (email, google_id, name, image) VALUES ($1, $2, $3, $4) RETURNING *",
-            [email, googleId, name, avatar]
-        );
-        // Generate JWT token
-        const token = jwt.sign({ userId: newUser.rows[0].id, email: newUser.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
-        res.cookie("auth_token", token, {
+  
+        // if user previously ever signed up with their google account we can give them access 
+        if (data.rows[0].google_id) {
+          const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "4d" });
+          res.cookie("auth_token", token, {
             httpOnly: true,
             secure: true,
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
-        });
-       return res.redirect(`mendai://oauth-success?token=${token}`);
-         
+          });
+          return res.redirect(`mendai://oauth-success?token=${token}`);
+        }
+      }
+  
+      // if the user is signing up for the first time
+      const newUser = await pool.query(
+        "INSERT INTO users (email, google_id, name, image) VALUES ($1, $2, $3, $4) RETURNING *",
+        [email, googleId, name, avatar]
+      );
+      const token = jwt.sign(
+        { userId: newUser.rows[0].id, email: newUser.rows[0].email },
+        process.env.JWT_SECRET,
+        { expiresIn: "4d" }
+      );
+      res.cookie("auth_token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        maxAge: 4 * 24 * 60 * 60 * 1000,
+      });
+      return res.redirect(`mendai://oauth-success?token=${token}`);
+  
     } catch (error) {
-        console.log(error)
-        throw new Error("Error while connecting to your google account!")
+      console.log(error);
+      throw new Error("Error while connecting to your google account!");
     }
-}
-}
+  };
+  
 // jwt based registration function
 export const Register = async (req, res) => {
     try {
