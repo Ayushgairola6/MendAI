@@ -60,7 +60,7 @@ export const googleAuth = async (req, res) => {
 
 
 // seperate google auth controller for mobile apps
-export const googleMobileAuth =(req,res)=>{
+export const googleMobileAuth =async (req,res)=>{
     try {
         // extracting the user data provided by google
         const { googleId, name, email, avatar } = req.user.user;
