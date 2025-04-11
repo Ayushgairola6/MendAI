@@ -29,10 +29,16 @@ Router.post("/api/Register", Register)
 		passport.authenticate("google", {
 			session: false,
 			failureRedirect: "/login",
-			failureMessage: true
+			failureMessage: true,
 		}),
 		googleAuth
 	)
+	.get("/api/mobile/auth/google",passport.authenticate("google",{scope:["proflile","email"],prompt:"consent"}))
+	.get("/api/mobile/aut/google/callback",passport.authenticate("google",{
+		session:false,
+		failureRedirect:"/login",
+		failureMessage:true,
+	}))
 	.get("/api/verify/account", verifyToken, LoginStateUpdate)
 	.get("/api/account/data", verifyToken, GetAccountData)
 	.post("/api/update/profile",verifyToken,upload.single("image"),uploadUserImages)
