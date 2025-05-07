@@ -14,45 +14,56 @@ export const app = express();
 export const server = http.createServer(app);
 export const io = new Server(server, {
     cors: {
-         origin: ["http://localhost:5173", "https://mendai.netlify.app"],
+        origin: ["http://localhost:5173", "https://mendai.netlify.app"],
         methods: ["GET", "POST"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
-    },transports: ['websocket','polling']
+    }, transports: ['websocket', 'polling']
 });//new socket io instance object
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
-  try {
-      // Parse cookies safely
-      const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
-      const tokenFromCookie = cookies["auth_token"];
-      const tokenFromAuth = socket.handshake.auth?.token; // Handle missing auth field safely
-      console.log("auth header token",tokenFromAuth);
-      console.log("auth from cookie",tokenFromCookie)
-      const finalToken = tokenFromCookie || tokenFromAuth; // Prefer cookies but fallback to auth token
-      if (!finalToken) {
-        return next(new Error("Authentication error: No token provided"));
-      }
-      // Verify JWT token
-      jwt.verify(finalToken, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-          console.log("Error while verifying token:", err.message);
-          return next(new Error("Authentication error: Invalid token"));
+    try {
+        // Parse cookies safely
+        const cookies = socket.handshake.headers.cookie ? cookie.parse(socket.handshake.headers.cookie) : {};
+        const tokenFromCookie = cookies["auth_token"];
+        const tokenFromAuth = socket.handshake.auth?.token; // Handle missing auth field safely
+
+        const finalToken = tokenFromCookie || tokenFromAuth; // Prefer cookies but fallback to auth token
+        if (!finalToken) {
+            return next(new Error("Authentication error: No token provided"));
         }
-        socket.user = decoded; // Attach user info to socket
-        next();
-      });
+        // Verify JWT token
+        jwt.verify(finalToken, process.env.JWT_SECRET, (err, decoded) => {
+            if (err) {
+                console.log("Error while verifying token:", err.message);
+                return next(new Error("Authentication error: Invalid token"));
+            }
+            socket.user = decoded; // Attach user info to socket
+            next();
+        });
     } catch (err) {
-      console.error("Socket middleware error:", err.message);
-      next(new Error("Internal Server Error"));
+        console.error("Socket middleware error:", err.message);
+        next(new Error("Internal Server Error"));
     }
 })
 
 // starting a new socket connection
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
     const AI_ID = 0;
 
+    const isPaid = await pool.query("SELECT p.user_id, p.status , p.validity,p.valid_to from payments p  LEFT JOIN users u on u.id = p.user_id WHERE u.id = $1", [socket.user.userId]);
+    if (isPaid.rows.length === 0) {
+        socket.userIsPaid = false;
+        console.log("user has not paid yet and is on free plan")
+    } else {
+        if (isPaid.rows[0].status === "Active") {
+            socket.userIsPaid = true;
+        } else {
+            socket.userIsPaid = false;
+        }
+        // console.log("user has paid")
+    }
     socket.on("message", async (data) => {
         if (!data.message || !data.user_id || !data.sender_name) {
             console.log("message is incomplete")
@@ -71,7 +82,10 @@ io.on("connection", (socket) => {
         const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
 
         socket.join(roomName);
-
+        if (socket.userIsPaid === false) {
+            io.to(roomName).emit("newMessage", { message: "Your free trial has ende for today", name: "Alice", user_id: 0 })
+            return;
+        }
         pool.query(
             "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
             [roomName, sender_id, data.message, 'user'],
@@ -85,38 +99,17 @@ io.on("connection", (socket) => {
                     return;
                 }
 
+
                 io.to(roomName).emit("newMessage", { message: data.message, name: sender_name, user_id: sender_id });
 
             }
         );
 
-        //check for the counter condition
-        const result = await pool.query(`
-            INSERT INTO context_counter (room_name, count, created_at)
-            VALUES ($1, 1, NOW())
-            ON CONFLICT (room_name)
-            DO UPDATE SET count = context_counter.count + 1, created_at = NOW()
-            RETURNING count;
-        `, [roomName]);
-        const messageCount = result.rows[0].count;
-        let context;
-        // generate context
-        if (messageCount >= 9) {
-            context = await generateContext(data.message, sender_id);
-            const query = `INSERT INTO chat_context (room_name,summary) VALUES ($1,$2)`;
-            const res = await pool.query(query, [roomName, context.response]);
-            // Reset the counter
-            await pool.query(`UPDATE context_counter SET count = 0 WHERE room_name = $1`, [roomName]);
-        } else {
-            context = { response: data.message };
-        }
-        // // **AI Response Logic (if applicable)**
-        if (!context) {
-            console.log("context not found")
+
+        if (socket.userIsPaid === false) {
             return;
         }
-
-        const aiResponse = await GetAIResponse(data.message, sender_id, context.response, roomName);
+        const aiResponse = await GetAIResponse(data.message, sender_id, roomName);
         if (!aiResponse) {
             console.log("Ai response generation error");
             return;

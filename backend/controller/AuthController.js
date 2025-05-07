@@ -20,7 +20,7 @@ export const googleAuth = async (req, res) => {
 
             // if user signed up manually
             if (!user.google_id || user.google_id == null) {
-                return res.redirect("https://mendai.netlify.app/oauth-success")
+                return res.redirect("http://localhost:5173/oauth-success")
             }
             // if user previously ever signed up with their google account we can give them access 
             if (data.rows[0].google_id) {
@@ -32,7 +32,8 @@ export const googleAuth = async (req, res) => {
                     sameSite: "none",
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
-            return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
+                // https://mendai.netlify.app
+            return res.redirect(`http://localhost:5173/oauth-success?token=${token}`);
             }
         }
 
@@ -50,7 +51,7 @@ export const googleAuth = async (req, res) => {
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
         });
-       return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
+       return res.redirect(`http://localhost:5173/oauth-success?token=${token}`);
          
     } catch (error) {
         console.log(error)

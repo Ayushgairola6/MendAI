@@ -18,7 +18,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", {
+        const response = await axios.get("http://localhost:8080/api/chat/history/data", {
           withCredentials: true,
           headers: {
             'Authorization': `Bearer ${token}`
@@ -36,8 +36,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn === false) return;
-
-   socket.current = io("https://mendai.onrender.com", {
+// https://mendai.onrender.com
+   socket.current = io("http://localhost:8080", {
   auth: {
     token: token,
   },
@@ -82,8 +82,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
     }
   }, [messages]);
   return (
-    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-gray-950 text-white">
-      <div className="flex flex-col w-full min-h-[90vh]  bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
+    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white">
+      <div className="flex flex-col w-full min-h-[90vh]  bg-gradient-to-br from-white/5 to-black border-gray-200 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
 
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
@@ -96,12 +96,12 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
-                  className={`flex ${msg.user_id === user.id ? "justify-end" : "justify-start"}`}
+                  className={`flex ${msg.user_id === user.id ? "justify-start" : "justify-end"}`}
                 >
                   <div
-                    className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-md ${msg.user_id === user.id ? "bg-gradient-to-br from-blue-600 to-blue-400 text-white" : "bg-gray-700 text-white"}`}
+                    className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-md ${msg.user_id === user.id ? "bg-sky-100 text-black" : "bg-red-100 text-black"}`}
                   >
-                    <p className="text-lg font-bold text-gray-300 mb-1">{msg.user_id === user.id ? msg.name : "Alice"}</p>
+                    <p className={`text-lg font-bold ${msg.user_id===user.id?"text-lime-600":"text-teal-600"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
                     <p>{msg.message}</p>
                   </div>
                   <div ref={bottomRef}></div>
@@ -109,24 +109,24 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
               ))}
             </AnimatePresence>
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-400 animate-pulse">
-              Please! Be respectful. Alice responds based on your messages.
+            <div className="flex items-center justify-center h-full font-bold text-gray-400 ">
+              Please! Be respectful ,and enjoy your personal time!
             </div>
           )}
         </div>
 
-        <div className="p-3 border-t border-gray-800 bg-gray-900 flex items-center">
+        <div className="p-3 border-t border-gray-800 bg-gradient-to-br from-black to-white/10 flex items-center">
           <input
             ref={InputRef}
             type="text"
             placeholder="Type your message..."
-            className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
+            className="flex-1 bg-gray-800 text-white font-serif font-bold px-4 py-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
             whileHover={{ scale: 1.05 }}
             // onClick={()SendMessage}
-            className="ml-3 bg-gradient-to-r from-purple-500 via-pink-500 to-yellow-500 text-white px-4 py-2 rounded-lg shadow-lg text-sm hover:brightness-110 transition"
+            className="ml-3 bg-gradient-to-r from-teal-500  to-lime-500 text-black font-bold px-4 py-4 cursor-pointer rounded-lg shadow-lg text-sm hover:brightness-110 transition-all "
           >
             Send
           </motion.button>

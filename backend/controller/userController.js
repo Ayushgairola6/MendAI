@@ -24,7 +24,6 @@ export const GetAccountData = (req, res) => {
             }
         })
 
-
     } catch (error) {
         console.log(error);
     }
@@ -33,7 +32,6 @@ export const GetAccountData = (req, res) => {
 export const uploadUserImages = async (req, res) => {
     try {
         const Image = req.file;
-        console.log(req.file)
         if (!Image) return res.status(400).json({ message: "Image not found!" });
         const UserId = req.user.userId;
         if (!UserId) {

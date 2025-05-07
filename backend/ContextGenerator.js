@@ -1,75 +1,84 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { pool } from "./Database.js";
-const genAI = new GoogleGenerativeAI(process.env.SEOND_API_KEY);
+
+// Initialize Gemini Model
+const genAI = new GoogleGenerativeAI(process.env.SECOND_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-// assigned role to AI
-const SYSTEM_PROMPT = `You are a context generator AI. You will be given a user's message. Your job is to immediately analyze it and return a detailed context summary. Include:
-- Mood (e.g., happy, anxious, curious)
-- Emotional State (e.g., stressed, relaxed, confused)
-- Summary of what the user is trying to express
-Respond ONLY with the context summary. Do not explain your process.
-Also add these things in the summary 1.What user was talking about!.
-You will also have the access to previous 10 messages you can use them to update the context summary so that we can provide better emotional support to the user.
-`;
 
+// Prompt used for generating context
+const SYSTEM_PROMPT = `You are a Context Generator AI.
+Your job is to analyze the user's latest message and generate a concise, insightful context summary. Use the last 10 messages (if available) for deeper understanding.
 
+Your output must include:
+Mood: (e.g., happy, anxious, curious)
+Emotional State: (e.g., stressed, relaxed, confused)
+User's Intent: A clear summary of what the user is trying to express or accomplish
+Topic of Discussion: What the user is talking about
+
+Important Guidelines:
+Respond only with the context summary. Do NOT include headings, bullet points, or any extra explanation. Use empathetic tone and concise, direct summaries.`;
+
+// Main function to generate context
 export const generateContext = async (message, sender_id) => {
+    if (!sender_id || !message) {
+        return { response: null, error: "Missing sender_id or message." };
+    }
+
     try {
-        if ( !sender_id) {
-            return { message: "no user response found" };
-        }
-
-        // get past messages
-        const history = await ContextProvider(sender_id);
-        // create a object of all of them
+        // Fetch last 10 messages + current message
+        const history = await fetchChatHistory(sender_id, 10);
         const chatHistory = [
-            ...history, // Add previous messages for context
-            ...(message ? [{ role: "user", parts: [{ text: message }] }] : []), // Current message
+            { role: "system", parts: [{ text: SYSTEM_PROMPT }] },
+            ...history,
+            { role: "user", parts: [{ text: message }] }
         ];
-        // send gemini the requested message 
-        const result = await model.generateContent({
-            contents: chatHistory,
-            systemInstruction: { role: "system", parts: [{ text: SYSTEM_PROMPT }] },
-        });
 
-        const responseText = result.response.text();
+        // Generate response from Gemini
+        const result = await model.generateContent({ contents: chatHistory });
+        const responseText = result.response.text().trim();
 
-        if (!responseText) {
-            return { error: "ALICE was unable to generate a response,please try again  later" };
+        if (!isValidContextFormat(responseText)) {
+            return { response: null, error: "Invalid format from Gemini response." };
         }
-        return { response: responseText };
+
+        return { response: responseText, error: null };
 
     } catch (error) {
-        throw error;
+        console.error("Error generating context:", error);
+        return { response: null, error: "Something went wrong while generating context." };
     }
+};
+
+// Fetch last N messages from DB
+async function fetchChatHistory(sender_id, limit = 10) {
+    const AI_ID = 0;
+    const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
+
+    const query = `
+        SELECT sender_type, message 
+        FROM messages 
+        WHERE room_name = $1 
+        ORDER BY sent_at DESC 
+        LIMIT $2
+    `;
+
+    const { rows } = await pool.query(query, [roomName, limit]);
+
+    return rows
+        .reverse()
+        .filter(msg => msg.message && msg.message.trim().length > 0)
+        .map(msg => ({
+            role: msg.sender_type === "user" ? "user" : "model",
+            parts: [{ text: msg.message }]
+        }));
 }
 
-
-async function ContextProvider(sender_id) {
-    if (!sender_id) return [];
-    try {
-        // creating a roomName
-        const AI_ID = 0;
-        const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
-        if (!roomName) {
-            return;
-        }
-        const query = `SELECT sender_type, message FROM messages WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 20`;
-        const { rows } = await pool.query(query, [roomName]);
-
-        if (rows.length === 0) return [];
-
-        // Format messages for Gemini API
-        return rows
-            .reverse()
-            .filter((msg) => msg.message && msg.message.trim().length > 0)  
-            .map((msg) => ({
-                role: msg.sender_type === "user" ? "user" : "model",
-                parts: [{ text: msg.message }],
-            }));
-
-
-    } catch (error) {
-        console.log(error);
-    }
+// Validate Gemini output format (basic check)
+function isValidContextFormat(text) {
+    return (
+        text.includes("Mood:") &&
+        text.includes("Emotional State:") &&
+        text.includes("User's Intent:") &&
+        text.includes("Topic of Discussion:")
+    );
 }

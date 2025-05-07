@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from './Navbar';
 import axios from 'axios';
-import { FaHeart } from "react-icons/fa";
+import { FaHeart, FaRegEdit } from "react-icons/fa";
 const EditProfile = ({ user, handelAccountDetails }) => {
 
     const DateRef = useRef();
@@ -37,50 +37,74 @@ const EditProfile = ({ user, handelAccountDetails }) => {
 
 
     return (<>
-        <div style={{backgroundColor:"black",borderTop:"1px solid lightgray",color:"white"}} className="h-screen ">
-          
-            {/* the top profile data part */}
-            <div className="flex items-center justify-start gap-10 p-2">
+        <div style={{ backgroundColor: "black", borderTop: "1px solid lightgray", color: "white" }} className="h-screen ">
+            {/* Top profile data part */}
+            <div className="flex items-center justify-start gap-10 p-2 relative">
+                <ul onClick={()=>{
+                    ImageRef.current.click()
+                }} className="absolute right-5 top-5 p-2 rounded-full bg-white/25 cursor-pointer hover:scale-110 transition-all duration-300"><FaRegEdit /></ul>
+
                 <div className="flex flex-col items-center justify-center gap-3">
-                    <section onMouseEnter={() => {
-                        setVisible(true)
-                    }} onMouseLeave={() => setVisible(false)} className="relative h-30 w-30 rounded-full border border-sky-300 cursor-pointer">
-                        <img className=" rounded-full h-full w-full  " src={user ? user.image : "/"} alt={user ? user.name : "/"} />
-                        <span className="text-xs p-4 text-center text-red-700">* hover/click on the image to add a new image</span>
-                        <div onClick={() => {
-                            ImageRef.current.click()
-                        }} className={`${visible === true ? "opacity-100" : "opacity-0"} transition-all  absolute top-0 left-0 flex  rounded-full h-full w-full bg-black/30`}>
+                    <section
+                        onMouseEnter={() => setVisible(true)}
+                        onMouseLeave={() => setVisible(false)}
+                        className="relative h-30 w-30 rounded-full border border-white cursor-pointer"
+                    >
+                        {/* Image Upload Loader */}
+                        {uploading === "pending" && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                                <div className="h-10 w-10 border-4 border-t-white border-gray-600 rounded-full animate-spin"></div>
+                            </div>
+                        )}
+
+                        {/* Profile Image */}
+                        <img
+                            className="rounded-full h-full w-full"
+                            src={user ? user.image : "/"}
+                            alt={user ? user.name : "No image"}
+                        />
+                        {/* 
+                        <span className="text-xs p-4 text-center text-gray-700">* hover/click on the image to add a new image</span> */}
+
+                        <div
+                            onClick={() => ImageRef.current.click()}
+                            className={`${visible ? "opacity-100" : "opacity-0"} transition-all absolute top-0 left-0 flex rounded-full h-full w-full bg-black/30`}
+                        >
                             <ul className='m-auto bg-white/70 text-black font-bold p-2 rounded-full'>
                                 Add
                             </ul>
                         </div>
                     </section>
-                    <input onChange={(event) => {
-                        if (event.target.files[0]) {
-                            AddImage(event.target.files[0]);
-                            event.target.value = "";
-                        }
-                    }} ref={ImageRef} className="absolute top-0 left-0 hidden" type="file" />
-                    {/* <div className="flex flex-col items-center justify-center gap-1 py-1 px-2 rounded-lg">
-                        <label className="font-semibold " htmlFor="Date">03/29/2025</label>
-                        <input ref={DateRef} className="cursor-pointer border border-gray-400 p-1 rounded-xl" type="date" />
-                    </div> */}
 
+                    {/* Hidden File Input */}
+                    <input
+                        onChange={(event) => {
+                            if (event.target.files[0]) {
+                                setUploading(true);
+                                AddImage(event.target.files[0]).finally(() => setUploading(false));
+                                event.target.value = "";
+                            }
+                        }}
+                        ref={ImageRef}
+                        className="absolute top-0 left-0 hidden"
+                        type="file"
+                    />
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-3">
-                    <ul className="text-xl font-semibold flex items-center justify-center gap-2"><FaHeart color="red"/>{user ? user.name : "No found"} </ul>
+                    <ul className="text-xl font-semibold flex items-center justify-center gap-2">
+                        <FaHeart color="red" />
+                        {user ? user.name : "Not found"}
+                    </ul>
                     <ul className="text-sm font-semibold">{user ? user.email : "Not found"}</ul>
-                    {/* <button style={{ background: "linear-gradient(to right , lime,skyblue)", }} className="px-2 py-1 cursor-pointer rounded-2xl shadow-sm shadow-gray-800 hover:scale-105 transition-all font-bold ">Update!</button> */}
                 </div>
-
             </div>
-            <div className="h-[50vh] flex items-center justify-center text-2xl font-bold ">
+
+            <div className="h-[50vh] flex items-center justify-center text-2xl font-bold">
                 New features and options will be live soon!
             </div>
-
-
         </div>
+
     </>)
 }
 
