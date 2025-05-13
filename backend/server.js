@@ -13,12 +13,12 @@ import { createGoogleStrategy } from './controller/googleOauthConfig.js'
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import passport from 'passport';
 import { placeOrder, verifyPayment } from './PaymentGateway/paymentController.js';
-
+import "./caching/RedisConfig.js";
 const Router = express.Router()
 dotenv.config();
 //cors configured to give frontend access to send cookies safely
 app.use(cors({
-	origin: ["http://localhost:5173", "https://mendai.netlify.app", "http://192.168.42.208:19006"], credentials: true,
+	origin: ["http://localhost:5173", "https://mendai.netlify.app", "http://192.168.42.247:80"], credentials: true,
 }));
 app.use(express.json())
 app.use(cookieParser());

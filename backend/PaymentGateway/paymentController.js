@@ -24,7 +24,6 @@ export const placeOrder = async (req, res) => {
         };
 
         const order = await razorpayInstance.orders.create(options);
-        console.log(order)
         return res.json(order);
     } catch (error) {
         console.error("Order creation failed:", error);
@@ -39,7 +38,10 @@ export const verifyPayment = async (req, res) => {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
         return res.status(400).json({ message: "No payement data found" });
     }
-
+    if (!req.user.userId) {
+        console.log("req.user nahi mila")
+        return res.status(400).json({ message: "User id not found" })
+    }
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
         .createHmac("sha256", process.env.RAZORPAY_TEST_SECRET)
@@ -53,7 +55,7 @@ export const verifyPayment = async (req, res) => {
   RETURNING *;
 `;
         const values = [
-            req.user.id,//users id
+            req.user.userId,//users id
             req.body.planType,//type of the plan
             new Date(), //day the subscription was made
             new Date(Date.now() + (req.body.validity * 24 * 60 * 60 * 1000)),//valid till
@@ -66,7 +68,6 @@ export const verifyPayment = async (req, res) => {
         ];
 
         const data = await pool.query(query, values)
-        console.log(data);
         return res.status(200).json({ success: true, message: "Payment verified successfully" });
     } else {
         return res.status(400).json({ success: false, message: "Invalid signature" });

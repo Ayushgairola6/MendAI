@@ -9,18 +9,21 @@ import Login from './components/LoginPage';
 import EditProfile from './components/EditProfile';
 import OAuthSuccess from './components/OauthSuccesPage';
 import Pricing from './components/Pricing'
-// temporary files
-import LoginForm from './components/TempLogin.jsx';
-import SignupForm from './components/TempSignup.jsx';
-import ChatForm from './components/TempChat.jsx';
-
+import Welcome from './components/welcome';
 function App() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [color, setColor] = useState("Light")
-
+  const [delay, setDelay] = useState(false);
   //  function to fetch user details
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDelay(true);
+    }, 2500)
+    return () => clearTimeout(timer);
+  }, [])
+
   async function handelAccountDetails() {
     const token = localStorage.getItem("auth_token");
     try {
@@ -59,28 +62,28 @@ function App() {
     window.location.href = "http://localhost:8080/api/auth/google";
   }
 
-  
+
 
 
 
   return (<>
 
     <Router>
-
-      <Navbar isLoggedIn={isLoggedIn} color={color} setColor={setColor} user={user} />
-
-
-      <Routes>
+      {delay === true ? <>
+        <Navbar isLoggedIn={isLoggedIn} color={color} setColor={setColor} user={user} />
 
 
-        <Route path='/Register' element={<SignupPage handleGoogleLogin={handleGoogleLogin} />} />
-        <Route path='/' element={<InterFace color={color} user={user} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path='/Login' element={<Login handleGoogleLogin={handleGoogleLogin} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
-        <Route path="/DashBoard" element={<EditProfile user={user} handelAccountDetails={handelAccountDetails} />} />
-        <Route path='/oauth-success' element={<OAuthSuccess isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
-        <Route path='/Plans' element={<Pricing isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
+        <Routes>
 
-      </Routes>
+          {/* <Route path='welcome' element={<Welcome />} /> */}
+          <Route path='/Register' element={<SignupPage handleGoogleLogin={handleGoogleLogin} />} />
+          <Route path='/' element={<InterFace color={color} user={user} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
+          <Route path='/Login' element={<Login handleGoogleLogin={handleGoogleLogin} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
+          <Route path="/DashBoard" element={<EditProfile user={user} handelAccountDetails={handelAccountDetails} />} />
+          <Route path='/oauth-success' element={<OAuthSuccess isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
+          <Route path='/Plans' element={<Pricing isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
+
+        </Routes></> : <Welcome />}
     </Router>
 
 

@@ -6,12 +6,15 @@ import cookie from 'cookie'
 import { Server } from 'socket.io';
 import { pool } from "../Database.js";
 import { GetAIResponse } from "./ModelResponseController.js";
+import { GenerateNsfwResponse } from './NsfwController.js';
 import { generateContext } from "../ContextGenerator.js";
+import { Redisclient } from "../caching/RedisConfig.js";
 dotenv.config();
-
 export const app = express();
+
 // creating an http server for both socket and api
 export const server = http.createServer(app);
+
 export const io = new Server(server, {
     cors: {
         origin: ["http://localhost:5173", "https://mendai.netlify.app"],
@@ -20,6 +23,7 @@ export const io = new Server(server, {
         allowedHeaders: ["Content-Type", "Authorization"]
     }, transports: ['websocket', 'polling']
 });//new socket io instance object
+
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
@@ -48,19 +52,26 @@ io.use((socket, next) => {
     }
 })
 
+
 // starting a new socket connection
 io.on("connection", async (socket) => {
     const AI_ID = 0;
 
-    const isPaid = await pool.query("SELECT p.user_id, p.status , p.validity,p.valid_to from payments p  LEFT JOIN users u on u.id = p.user_id WHERE u.id = $1", [socket.user.userId]);
+    const isPaid = await pool.query("SELECT user_id,plan_type,status,validity FROM payments WHERE user_id = $1 ORDER BY created_at  DESC LIMIT 1", [socket.user.userId]);
+    // console.log(isPaid.rows)
     if (isPaid.rows.length === 0) {
         socket.userIsPaid = false;
-        console.log("user has not paid yet and is on free plan")
+        socket.userplanType = "Free";
+        socket.userStatus = "inactive";
     } else {
-        if (isPaid.rows[0].status === "Active") {
+        if (isPaid.rows[0].status === "active") {
             socket.userIsPaid = true;
+            socket.userplanType = isPaid.rows[0].plan_type;
+            socket.userStatus = "active";
         } else {
             socket.userIsPaid = false;
+            socket.userplanType = "Free";
+            socket.userStatus = "inactive";
         }
         // console.log("user has paid")
     }
@@ -69,89 +80,179 @@ io.on("connection", async (socket) => {
             console.log("message is incomplete")
             return;
         }
-
-        const sender_id = data.user_id;
+        // console.log(data)
+        const sender_id = socket.user.userId;
         const sender_name = data.sender_name;
 
-        if (!sender_id || !data.user_id) {
-            console.error("User ID not found in socket session");
-            return;
-        }
 
         // Create room name by sorting IDs
         const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
 
+
+
+        // join the room so that the users in the room can see the live messages
         socket.join(roomName);
-        if (socket.userIsPaid === false) {
-            io.to(roomName).emit("newMessage", { message: "Your free trial has ende for today", name: "Alice", user_id: 0 })
-            return;
+        const messages_sent = await RateLimiter(sender_id, socket.userIsPaid, socket.userplanType, socket.userStatus)
+        if (messages_sent === "You have reached todays limit of your free message") {
+            io.to(roomName).emit("newMessage", { message: "You have reached your todays free limit , to continue chatting with alice please wait until tomorrow or upgrade you plan to enjoy longer and more personal conversations", name: "Alice", user_id: 0 });
         }
-        pool.query(
+        const UserResponse = await pool.query(
             "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
-            [roomName, sender_id, data.message, 'user'],
-            (err, result) => {
-                if (err) {
-                    console.error("Database error:", err);
-                    return;
-                }
-                if (result.rowCount === 0) {
-                    console.warn("Message insertion failed");
-                    return;
-                }
-
-
-                io.to(roomName).emit("newMessage", { message: data.message, name: sender_name, user_id: sender_id });
-
-            }
-        );
-
-
-        if (socket.userIsPaid === false) {
+            [roomName, sender_id, data.message, 'user']);
+        if (UserResponse.rowCount === 0) {
+            console.error("error while inserting user message in the database");
             return;
         }
-        const aiResponse = await GetAIResponse(data.message, sender_id, roomName);
-        if (!aiResponse) {
+        // caching the data
+        const cachedUserMessage = await InsertChatsIntoMemory(roomName, data.message, sender_name, sender_id);
+        // console.log(cachedUserMessage, "cachedUserMessage");
+        await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
+        // const context2 = await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
+
+        // console.log(context2)
+
+        // emitting the message after insetion to the users in that particular room
+        io.to(roomName).emit("newMessage", { message: data.message, name: sender_name, user_id: sender_id });
+
+        // generating ai response based on isPaid status , if user does not have a subscription use gemini for basic chats and companionship
+        let aiResponse;
+        // if (socket.userIsPaid === true) {
+        aiResponse = await GetAIResponse(data.message, sender_id, roomName, socket.userIsPaid);
+        // console.log("gemini is responding", aiResponse)
+
+        // } 
+        // else {
+        //     // else use counterAi api with uncensored ai models
+        //     aiResponse = await GenerateNsfwResponse(data.message, sender_id, roomName, socket.userIsPaid);
+        //     console.log("counterAI  is responding")
+        //     console.log(aiResponse);
+        // }
+        if (aiResponse?.error) {
+            // console.log(aiResponse);
             console.log("Ai response generation error");
             return;
         }
 
-        // console.log(aiResponse)
-        pool.query(
+
+        // then store in the database
+        const modelResponse = await pool.query(
             "INSERT INTO messages (room_name, message,sender_type) VALUES ($1, $2,CAST($3 AS VARCHAR(10))) RETURNING *",
-            [roomName, aiResponse.response, 'model'],
-            (err, result) => {
-                if (err) {
-                    console.error("Database error:", err)
-                    return;
-                }
-                if (result.rowCount === 0) {
-                    console.warn("Message insertion failed");
-                    return;
-                }
-
-                io.to(roomName).emit("newMessage", { message: aiResponse.response, sender: "Alice", user_id: AI_ID });
-
-            }
-        );
+            [roomName, aiResponse.response, 'model']);
+        if (modelResponse.rowCount === 0) {
+            console.log("Error while inserting ai response")
+            return;
+        }
+        // store the ai response in the databse
+        const cachedAiResposne = await InsertChatsIntoMemory(roomName, aiResponse.response, "Alice", AI_ID);
+        const context = await InvokeContextGenerator(roomName, aiResponse.response, AI_ID, socket.userIsPaid);
+        // console.log(context)
+        // then emit the ai response to the users in that room
+        io.to(roomName).emit("newMessage", { message: aiResponse.response, name: "Alice", user_id: AI_ID });
 
 
     });
 
+    // disconnect event for socket cleanup
     socket.on("disconnect", () => {
-        console.log("User has been disconnected");
+        // console.log("User has been disconnected");
     });
 });
 
-// Mock AI response function (Replace with actual AI logic)
-function generateAIResponse(userMessage) {
-    return `AI response to: "${userMessage}"`;
+// this function wiill insert data intot  memory
+async function InsertChatsIntoMemory(roomName, message, sender_name, sender_id) {
+    try {
+
+        if (!roomName || !message || !sender_name || sender_id === null || sender_id === undefined) {
+            // console.log(roomName, message, sender_name, sender_id);
+            return { error: "All the fields are necessary to cache the chats" };
+        }
+        const RedisKey = `RoomInfo:${roomName}:roomHistory`;
+
+        const messageData = {
+            message: message, name: sender_name, user_id: sender_id,
+        };
+        let pastConvos = await Redisclient.get(RedisKey);
+
+        if (pastConvos) {
+            pastConvos = JSON.parse(pastConvos);
+            pastConvos.push(messageData);
+
+            //  update the cache of chat history
+            await Redisclient.set(RedisKey, JSON.stringify(pastConvos), 'EX', 400)
+            return;
+        } else {
+            // If there’s no cached chat history, it means this is the user's first message
+            await Redisclient.set(RedisKey, JSON.stringify([messageData]), 'EX', 400);
+            return;
+
+        }
+    } catch (error) {
+        console.error(error);
+        return { error: "Something went wrong while caching the chats" }
+    }
 }
 
 
-export function getChatHistory(req, res) {
+// function to invoke context generator
+export const InvokeContextGenerator = async (roomName, message, sender_id, isPaid) => {
+    try {
+        if (!roomName || !sender_id || isPaid === null || isPaid === undefined || !message) {
+            // console.error(roomName, message, sender_id, isPaid)
+            return { error: "All the data was not given to the increment counter" }
+        }
+        // counter state to verify the current state of users context generation status
+        const CounterCheckQuery = await pool.query(`SELECT * from context_counter WHERE room_name = $1`, [roomName]);
+        // console.log(CounterCheckQuery.rows)
+        if (isPaid === false) {
+            if (CounterCheckQuery.rows.length === 0) {
+                console.log("starting a new counter instance")
+                await pool.query(
+                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
+                    [0, roomName]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 5) {
+                console.log("resetting the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
+                    [0, roomName]
+                );
+
+                const context = await generateContext(message, sender_id, isPaid);
+                if (!context) {
+                    return { error: "Error while generating summary of the conversation" };
+                }
+                console.log("generating the context and reseting the counter")
+                await pool.query(
+                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
+                    [roomName, context]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 5) {
+                console.log("incrementing the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
+                    [roomName]
+                );
+            }
+        } else {
+            // console.log("Invoking the contetx generator");
+            const context = await generateContext(message, sender_id, isPaid);
+            // console.log(context, "The context is being generated");
+            if (context?.error !== null) {
+                return { error: "Error while generating context for this message" };
+            }
+            await pool.query("INSERT INTO chat_context (room_name,summary) VALUES($1,$2)", [roomName, context?.response]);
+        }
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+
+
+export async function getChatHistory(req, res) {
     try {
         const userId = req.user.userId;
-        console.log(req.user)
         const AI_ID = 0;
         if (!userId) {
             console.log("user ki id not found");
@@ -159,25 +260,74 @@ export function getChatHistory(req, res) {
         }
         const roomName = [userId, AI_ID].sort((a, b) => a - b).join("_");
 
+        // if the chat history as been cached
+        const RedisKey = `RoomInfo:${roomName}:roomHistory`;
+        await Redisclient.del(RedisKey);
+        // let previousChats = await Redisclient.get(RedisKey);
+        // if (previousChats) {
+        //     previousChats = JSON.parse(previousChats);
+        //     return res.status(200).json(previousChats);
+        // }
+        const currentDate = new Date();
         //  fetch messages from messages tables where user id is present but only last 8
-        const query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 10`;
+        const User_isPaid = await pool.query(`SELECT * FROM payments WHERE user_id = $1 ORDER BY created_at DESC`, [userId])
+        const dbDate = new Date(User_isPaid.rows[0].valid_to); // From DB (UTC)
 
-        pool.query(query, [roomName], (error, result) => {
-            if (error) {
-                return res.status(500).json({ success: false, message: "Internal servr error!" });
+        //   dynamically set limit based on subscription type
+        let query;
+        if (User_isPaid.rows.length === 0) {
+            query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 5`;
+        } else if (User_isPaid.rows[0].status === "active" && User_isPaid.rows[0].plan_type === "Casual Vibes" && currentDate.getTime() < dbDate.getTime()) {
 
-            }
-            if (result.rows.length > 0) {
-                // sort messages and send them
-                // const SortedMessages = result.rows.sort((a,b)=>a-b);
-                return res.status(200).json(result.rows.reverse());
-            }
-            else {
-                return res.status(200).json(result.rows);
-            }
-        })
+
+            query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 8`;
+        } else if (User_isPaid.rows[0].status === "active" && User_isPaid.rows[0].plan_type === "Getting spicy" && currentDate.getTime() < dbDate.getTime()) {
+
+            query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 15`;
+
+        } else if (User_isPaid.rows[0].status === "active" && User_isPaid.rows[0].plan_type === "Serious Series" && currentDate.getTime() < dbDate.getTime()) {
+            query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 20`;
+        } else if (User_isPaid.rows[0].status === "active" && currentDate.getTime() > dbDate.getTime()) {
+
+            await pool.query(`UPDATE payments SET status = $1 WHERE user_id = $2`, ["Inactive", userId]);
+            query = `SELECT * FROM messages LEFT JOIN users u ON u.id = messages.user_id  WHERE room_name = $1 ORDER BY sent_at DESC LIMIT 5 `;
+        }
+
+        const chats = await pool.query(query, [roomName]);
+        if (chats.rows.length === 0) {
+            return res.status(200).json([]);
+        }
+        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 400); //around 11 mins
+        return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
+        console.log(error);
+    }
+}
 
+const RateLimiter = async (sender_id, isPaid, planType, status) => {
+    try {
+        const today = new Date().toISOString().split("T")[0];//year month day format
+
+        // if user is paid with casual type of subscription
+        if (isPaid === true  && status === "active") {
+            // if this is the first time user is sending the messages
+            const query = await pool.query("SELECT user_id from rate_limit WHERE user_id =$1", [sender_id]);
+            if (query.rows.length === 0) {
+                await pool.query("INSERT INTO rate_limit (user_id,date,message_sent) VALUES ($1,$2,$3) ", [sender_id, today, 1]);
+                // counting how many messages sent today by this user
+                const { rows } = await pool.query(
+                    "SELECT SUM(message_sent) AS total_sent FROM rate_limit WHERE user_id = $1 AND date = $2",
+                    [sender_id, today]
+                );
+
+                return rows[0].total_sent;
+            }
+        }
+
+
+    } catch (error) {
+        console.log(error);
+        return { issue: error };
     }
 }

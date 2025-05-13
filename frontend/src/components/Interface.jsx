@@ -11,7 +11,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   const [messages, setMessages] = useState([]);
   const navigate = useNavigate();
   const bottomRef = useRef(null);
-
+  const [aiThinking, setAiThinking] = useState(false);
   useEffect(() => {
     const token = localStorage.getItem("auth_token")
     if (!isLoggedIn) return;
@@ -36,26 +36,32 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn === false) return;
-// https://mendai.onrender.com
-   socket.current = io("http://localhost:8080", {
-  auth: {
-    token: token,
-  },
-  withCredentials: true,
-  transports: ["websocket", "polling"], // WebSocket first, fallback to polling
-  upgrade: true, // allow transport upgrade
-  reconnection: true,
-  reconnectionAttempts: 5,
-  timeout: 20000,
-});
+    // https://mendai.onrender.com
+    socket.current = io("http://localhost:8080", {
+      auth: {
+        token: token,
+      },
+      withCredentials: true,
+      transports: ["websocket", "polling"], // WebSocket first, fallback to polling
+      upgrade: true, // allow transport upgrade
+      reconnection: true,
+      reconnectionAttempts: 5,
+      timeout: 20000,
+    });
 
 
     socket.current.on("connect", () => {
-      // console.log("socket has connected")
+      console.log("socket has connected")
     });
 
     socket.current.on("newMessage", (data) => {
-      setMessages((prev) => [...prev, data]);
+
+      if (user && data.user_id !== user.id) {
+        // console.log(data);
+        setAiThinking(false);
+        setMessages((prev) => [...prev, data]);
+      }
+
     });
 
     return () => {
@@ -63,7 +69,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
         socket.current.disconnect();
       }
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user]);
 
   function SendMessage(e) {
     e.preventDefault();
@@ -71,18 +77,27 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
       navigate("/Register");
       return;
     }
-    if (InputRef.current.value === "" || !user) return;
-
+    if (InputRef.current.value === "" || !user || aiThinking === true) return;
+    messages.push({ message: InputRef.current.value, user_id: user.id, name: user.name });
     socket.current.emit("message", { message: InputRef.current.value, user_id: user.id, sender_name: user.name });
     InputRef.current.value = "";
+    setAiThinking(true);
+
   }
+
+  // the scroll into view to make the container slide up on its own
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, SendMessage]);
+
   return (
-    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white">
+    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white relative">
+      <div className={`${aiThinking === true  ? "block" : "hidden"} absolute top-20 left-20 flex items-center justify-center rounded-xl font-bold text-white animate-pulse bg-black p-4 border border-indigo-700 transition-all duration-300`}>
+        <span>Thinking..</span>
+      </div>
+
       <div className="flex flex-col w-full min-h-[90vh]  bg-gradient-to-br from-white/5 to-black border-gray-200 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
 
 
@@ -101,10 +116,12 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
                   <div
                     className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-md ${msg.user_id === user.id ? "bg-sky-100 text-black" : "bg-red-100 text-black"}`}
                   >
-                    <p className={`text-lg font-bold ${msg.user_id===user.id?"text-lime-600":"text-teal-600"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
-                    <p>{msg.message}</p>
+                    <p className={`text-lg font-bold ${msg.user_id === user.id ? "text-lime-600" : "text-teal-600"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
+                    <p className={` font-semibold ${msg.user_id === user.id ? "font-sans" : "font-mono"}`}>{msg.message}</p>
+
                   </div>
-                  <div ref={bottomRef}></div>
+                  <div className="relative" ref={bottomRef}></div>
+
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -122,14 +139,12 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
             placeholder="Type your message..."
             className="flex-1 bg-gray-800 text-white font-serif font-bold px-4 py-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
           />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            whileHover={{ scale: 1.05 }}
-            // onClick={()SendMessage}
-            className="ml-3 bg-gradient-to-r from-teal-500  to-lime-500 text-black font-bold px-4 py-4 cursor-pointer rounded-lg shadow-lg text-sm hover:brightness-110 transition-all "
+          {aiThinking === false ? <motion.button
+            whileTap={{ scale: 0.1 }}
+            className="ml-3 bg-gradient-to-r from-teal-500  to-lime-500 text-black font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
           >
             Send
-          </motion.button>
+          </motion.button> : <button className="ml-3 bg-gradient-to-r from-white/15  to-white/5 border  text-white font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all ">Send</button>}
         </div>
       </div>
     </form>
