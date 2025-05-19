@@ -116,7 +116,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
                   <div
                     className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-md ${msg.user_id === user.id ? "bg-sky-100 text-black" : "bg-red-100 text-black"}`}
                   >
-                    <p className={`text-lg font-bold ${msg.user_id === user.id ? "text-lime-600" : "text-teal-600"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
+                    <p className={`text-lg font-bold ${msg.user_id === user.id ? "text-purple-600" : "text-indigo-600"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
                     <p className={` font-semibold ${msg.user_id === user.id ? "font-sans" : "font-mono"}`}>{msg.message}</p>
 
                   </div>
@@ -126,7 +126,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
               ))}
             </AnimatePresence>
           ) : (
-            <div className="flex items-center justify-center h-full font-bold text-gray-400 ">
+            <div className="flex items-center justify-center h-full  text-gray-400 font-sans text-sm">
               Please! Be respectful ,and enjoy your personal time!
             </div>
           )}
@@ -137,11 +137,11 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
             ref={InputRef}
             type="text"
             placeholder="Type your message..."
-            className="flex-1 bg-gray-800 text-white font-serif font-bold px-4 py-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
+            className="flex-1 bg-gray-800 text-white font-sans  px-4 py-5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
           />
           {aiThinking === false ? <motion.button
-            whileTap={{ scale: 0.1 }}
-            className="ml-3 bg-gradient-to-r from-teal-500  to-lime-500 text-black font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
+            whileTap={{ scale: 0.9}}
+            className="ml-3 bg-sky-600 text-black font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
           >
             Send
           </motion.button> : <button className="ml-3 bg-gradient-to-r from-white/15  to-white/5 border  text-white font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all ">Send</button>}

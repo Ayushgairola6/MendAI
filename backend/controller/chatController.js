@@ -55,6 +55,11 @@ io.use((socket, next) => {
 
 // starting a new socket connection
 io.on("connection", async (socket) => {
+    const today = new Date().toISOString().split("T")[0];//month day and year format
+    // Get tomorrow's date for resetting the limit
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowFormatted = tomorrow.toISOString().split('T')[0];
     const AI_ID = 0;
 
     const isPaid = await pool.query("SELECT user_id,plan_type,status,validity FROM payments WHERE user_id = $1 ORDER BY created_at  DESC LIMIT 1", [socket.user.userId]);
@@ -92,10 +97,53 @@ io.on("connection", async (socket) => {
 
         // join the room so that the users in the room can see the live messages
         socket.join(roomName);
-        const messages_sent = await RateLimiter(sender_id, socket.userIsPaid, socket.userplanType, socket.userStatus)
-        if (messages_sent === "You have reached todays limit of your free message") {
-            io.to(roomName).emit("newMessage", { message: "You have reached your todays free limit , to continue chatting with alice please wait until tomorrow or upgrade you plan to enjoy longer and more personal conversations", name: "Alice", user_id: 0 });
+
+        const messagesSentUntilNow = await CheckMessageLimitStatus(sender_id);
+        const totalSent = messagesSentUntilNow?.total_sent;
+        console.log(totalSent.total_sent);
+        // Define limits per plan type
+        const limits = {
+            free: 50,
+            'Casual Vibes': 200,
+            'Getting spicy': 500,
+            'Serious Series': 1000
+        };
+
+        // Check if user reached their daily limit
+        if (totalSent.total_sent >= limits[socket.userplanType] ||
+            (socket.userIsPaid === false && totalSent.total_sent >= limits.free)) {
+
+            // Update the date to tomorrow to reset the counter
+            await pool.query(
+                "UPDATE rate_limit SET date = $1, message_sent = 0 WHERE user_id = $2",
+                [tomorrowFormatted, sender_id]
+            );
+
+            io.to(roomName).emit("newMessage", {
+                message: "You've reached your daily limit. Please wait until tomorrow or upgrade your plan.",
+                name: "Alice",
+                user_id: 0
+            });
+            return;
         }
+        // If no record exists, create one
+        if (totalSent.total_sent == 0) {
+
+            await pool.query(
+                "INSERT INTO rate_limit (user_id, date, message_sent) VALUES ($1, $2, 1)",
+                [sender_id, today]
+            );
+        }
+        // Otherwise increment the counter
+        else {
+            await pool.query(
+                "UPDATE rate_limit SET message_sent = message_sent + 1 WHERE user_id = $1 AND date = $2",
+                [sender_id, today]
+            );
+        }
+
+
+
         const UserResponse = await pool.query(
             "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
             [roomName, sender_id, data.message, 'user']);
@@ -194,7 +242,7 @@ async function InsertChatsIntoMemory(roomName, message, sender_name, sender_id) 
 
 
 // function to invoke context generator
-export const InvokeContextGenerator = async (roomName, message, sender_id, isPaid) => {
+export const InvokeContextGenerator = async (roomName, message, sender_id, isPaid, plan_type) => {
     try {
         if (!roomName || !sender_id || isPaid === null || isPaid === undefined || !message) {
             // console.error(roomName, message, sender_id, isPaid)
@@ -205,13 +253,103 @@ export const InvokeContextGenerator = async (roomName, message, sender_id, isPai
         // console.log(CounterCheckQuery.rows)
         if (isPaid === false) {
             if (CounterCheckQuery.rows.length === 0) {
-                console.log("starting a new counter instance")
+                // console.log("starting a new counter instance")
+                await pool.query(
+                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
+                    [0, roomName]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 15) {
+                // console.log("resetting the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
+                    [0, roomName]
+                );
+
+                const context = await generateContext(message, sender_id, isPaid);
+                if (!context) {
+                    return { error: "Error while generating summary of the conversation" };
+                }
+                // console.log("generating the context and reseting the counter")
+                await pool.query(
+                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
+                    [roomName, context]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 15) {
+                // console.log("incrementing the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
+                    [roomName]
+                );
+            }
+        } else if (isPaid === true && plan_type === "Casual Vibes") {
+            if (CounterCheckQuery.rows.length === 0) {
+                // console.log("starting a new counter instance")
+                await pool.query(
+                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
+                    [0, roomName]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 8) {
+                // console.log("resetting the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
+                    [0, roomName]
+                );
+
+                const context = await generateContext(message, sender_id, isPaid);
+                if (!context) {
+                    return { error: "Error while generating summary of the conversation" };
+                }
+                // console.log("generating the context and reseting the counter")
+                await pool.query(
+                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
+                    [roomName, context]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 8) {
+                // console.log("incrementing the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
+                    [roomName]
+                );
+            }
+        } else if (isPaid === true && plan_type === "Getting spicy") {
+            if (CounterCheckQuery.rows.length === 0) {
+                // console.log("starting a new counter instance")
                 await pool.query(
                     `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
                     [0, roomName]
                 );
             } else if (CounterCheckQuery.rows[0].count >= 5) {
-                console.log("resetting the counter")
+                // console.log("resetting the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
+                    [0, roomName]
+                );
+
+                const context = await generateContext(message, sender_id, isPaid);
+                if (!context) {
+                    return { error: "Error while generating summary of the conversation" };
+                }
+                // console.log("generating the context and reseting the counter")
+                await pool.query(
+                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
+                    [roomName, context]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 5) {
+                // console.log("incrementing the counter")
+                await pool.query(
+                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
+                    [roomName]
+                );
+            }
+        } else {
+            if (CounterCheckQuery.rows.length === 0) {
+                // console.log("starting a new counter instance")
+                await pool.query(
+                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
+                    [0, roomName]
+                );
+            } else if (CounterCheckQuery.rows[0].count >= 2) {
+                // console.log("resetting the counter")
                 await pool.query(
                     `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
                     [0, roomName]
@@ -226,21 +364,13 @@ export const InvokeContextGenerator = async (roomName, message, sender_id, isPai
                     `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
                     [roomName, context]
                 );
-            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 5) {
-                console.log("incrementing the counter")
+            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 2) {
+                // console.log("incrementing the counter")
                 await pool.query(
                     `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
                     [roomName]
                 );
             }
-        } else {
-            // console.log("Invoking the contetx generator");
-            const context = await generateContext(message, sender_id, isPaid);
-            // console.log(context, "The context is being generated");
-            if (context?.error !== null) {
-                return { error: "Error while generating context for this message" };
-            }
-            await pool.query("INSERT INTO chat_context (room_name,summary) VALUES($1,$2)", [roomName, context?.response]);
         }
 
     } catch (error) {
@@ -262,12 +392,12 @@ export async function getChatHistory(req, res) {
 
         // if the chat history as been cached
         const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-        await Redisclient.del(RedisKey);
-        // let previousChats = await Redisclient.get(RedisKey);
-        // if (previousChats) {
-        //     previousChats = JSON.parse(previousChats);
-        //     return res.status(200).json(previousChats);
-        // }
+        // await Redisclient.del(RedisKey);
+        let previousChats = await Redisclient.get(RedisKey);
+        if (previousChats) {
+            previousChats = JSON.parse(previousChats);
+            return res.status(200).json(previousChats);
+        }
         const currentDate = new Date();
         //  fetch messages from messages tables where user id is present but only last 8
         const User_isPaid = await pool.query(`SELECT * FROM payments WHERE user_id = $1 ORDER BY created_at DESC`, [userId])
@@ -297,7 +427,7 @@ export async function getChatHistory(req, res) {
         if (chats.rows.length === 0) {
             return res.status(200).json([]);
         }
-        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 400); //around 11 mins
+        await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
         return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
@@ -305,24 +435,19 @@ export async function getChatHistory(req, res) {
     }
 }
 
-const RateLimiter = async (sender_id, isPaid, planType, status) => {
+
+
+// this function will keep checking the limit of messages sent until now by a particular user
+
+const CheckMessageLimitStatus = async (sender_id) => {
     try {
-        const today = new Date().toISOString().split("T")[0];//year month day format
-
-        // if user is paid with casual type of subscription
-        if (isPaid === true  && status === "active") {
-            // if this is the first time user is sending the messages
-            const query = await pool.query("SELECT user_id from rate_limit WHERE user_id =$1", [sender_id]);
-            if (query.rows.length === 0) {
-                await pool.query("INSERT INTO rate_limit (user_id,date,message_sent) VALUES ($1,$2,$3) ", [sender_id, today, 1]);
-                // counting how many messages sent today by this user
-                const { rows } = await pool.query(
-                    "SELECT SUM(message_sent) AS total_sent FROM rate_limit WHERE user_id = $1 AND date = $2",
-                    [sender_id, today]
-                );
-
-                return rows[0].total_sent;
-            }
+        const today = new Date().toISOString().split("T");
+        const limit = await pool.query("SELECT  COUNT(message_sent) AS total_sent  FROM rate_limit WHERE user_id = $1 AND date = $2", [sender_id, today]);
+        // console.log(limit.rows)
+        if (limit.rows.length === 0) {
+            return { total_sent: "0" };
+        } else {
+            return { total_sent: limit.rows[0] }
         }
 
 

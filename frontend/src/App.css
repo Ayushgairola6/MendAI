@@ -1,73 +1,34 @@
 @import "tailwindcss";
 
-
-@keyframes slideIn {
-    0% {
-        transform: translateX(34%);
-        z-index: 0;
-        opacity: 0;
-    }
-
-    100% {
-        transform: translateX(0);
-        z-index: 1;
-        opacity: 1;
-    }
+ .logo {
+    animation: glow 2s infinite ease-in;
 }
 
-.styled {
-    animation: slideIn 0.5s ease-in-out forwards;
+@keyframes glow {
+  0% { text-shadow: 0 0 5px hsl(278, 42%, 45%); }
+  50% { text-shadow: 0 0 40px hsl(278, 42%, 45%); }
+  100% { text-shadow: 0 0 5px hsl(278, 42%, 45%); }
 }
 
-.styled2 {
-    animation: slideIn 0.5s ease-in-out forwards;
+/* .logo {
+  animation: glow 2s infinite alternate;
+} */ 
 
+/* @keyframes slideUp {
+  0% { transform: translateY(50px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
-
-@keyframes widthAdjust {
-    0% {
-        width: auto;
-    }
-
-    100% {
-        width: fit-content;
-    }
+.logo {
+  animation: slideUp 1.5s ease-in-out;
+} */
+/* span {
+  background-size: 400% 100%;
+  animation: shimmer 3s linear infinite;
 }
-
-.main {
-    animation: widthAdjust 1s ease-in-out;
-    transition: width 1s ease-in-out;
+ @keyframes shimmer {
+  0% { background-position: -200%; }
+  100% { background-position: 200%; }
 }
+ */
 
-.rotate-right {
-    animation: rotatingBorderRight 1s ease-in-out;
-    border: 1px solid mediumblue;
-}
-
-@keyframes rotatingBorderRight {
-    0% {
-        border-color: mediumblue;
-        transform: rotate(0deg);
-    }
-    100% {
-        border-color: mediumblue;
-        transform: rotate(360deg);
-    }
-}
-
-.rotate-left {
-    animation: rotatingBorderLeft 1s ease-in-out;
-    border: 1px solid gray;
-}
-
-@keyframes rotatingBorderLeft {
-    0% {
-        border-color: gray;
-        transform: rotate(0deg);
-    }
-    100% {
-        border-color: gray;
-        transform: rotate(-360deg);
-    }
-}

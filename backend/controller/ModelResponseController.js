@@ -31,7 +31,7 @@ export const GetAIResponse = async (message, sender_id, roomName, userIsPaid) =>
       deep_memory = await getDeepMemoryForUser(sender_id);
     }
     // sending the conext to the model
-    console.log(deep_memory);
+    // console.log(deep_memory);
     const result = await model.generateContent({
       contents: [
         { role: "model", parts: [{ text: process.env.SYSTEM_PROMPT }] },
@@ -42,7 +42,7 @@ export const GetAIResponse = async (message, sender_id, roomName, userIsPaid) =>
         temperature: 0.8,
         topP: 0.95,
         topK: 40,
-        maxOutputTokens: 500,
+        maxOutputTokens: 600,
       }
     });
     const responseText = result.response.text();
@@ -68,30 +68,29 @@ async function ContextProvider(sender_id, userIsPaid) {
     if (hasHistoryCached) {
       const parsedHistory = JSON.parse(hasHistoryCached);
       return parsedHistory
-        .reverse()
         .filter(msg => msg.message && msg.message.trim().length > 0)
         .map(msg => ({
           role: msg.sender_type === "user" ? "user" : "model",
           parts: [{ text: msg.message }]
         }));
     }
-    console.log(hasHistoryCached);
+    // console.log(hasHistoryCached);
     //  last 6 messages
-    const lastChatsQuery = `
-      SELECT sender_type, message
-      FROM messages
-      WHERE room_name = $1
-      ORDER BY sent_at DESC
-      LIMIT $2
-    `;
-    const { rows: chatRows } = await pool.query(lastChatsQuery, [roomName, userIsPaid === false ? 5 : 20]);
-    const formattedRecent = chatRows.reverse().map(msg => {
-      if (!msg.message) return null;
-      return {
-        role: msg.sender_type === "user" ? "user" : "model",
-        parts: [{ text: msg.message }]
-      };
-    }).filter(Boolean); // removes null
+    // const lastChatsQuery = `
+    //   SELECT sender_type, message
+    //   FROM messages
+    //   WHERE room_name = $1
+    //   ORDER BY sent_at DESC
+    //   LIMIT $2
+    // `;
+    // const { rows: chatRows } = await pool.query(lastChatsQuery, [roomName, userIsPaid === false ? 5 : 20]);
+    // const formattedRecent = chatRows.reverse().map(msg => {
+    //   if (!msg.message) return null;
+    //   return {
+    //     role: msg.sender_type === "user" ? "user" : "model",
+    //     parts: [{ text: msg.message }]
+    //   };
+    // }).filter(Boolean); // removes null
 
 
 
@@ -104,7 +103,7 @@ async function ContextProvider(sender_id, userIsPaid) {
       ORDER BY generated_at DESC
       LIMIT $2
     `;
-    const { rows: summaryRows } = await pool.query(contextQuery, [roomName, userIsPaid === false ? 5 : 20]);
+    const { rows: summaryRows } = await pool.query(contextQuery, [roomName, userIsPaid === false ? 5 : 10]);
     const formattedSummaries = summaryRows.map(r => {
       if (!r.summary) return null;
       return {
@@ -116,7 +115,8 @@ async function ContextProvider(sender_id, userIsPaid) {
     // returning the memory and recent texts
     return [
       ...formattedSummaries,
-      ...formattedRecent
+      // ...formattedRecent,
+      // ...parsedHistory
     ];
   } catch (error) {
     console.error("ContextProvider error:", error);

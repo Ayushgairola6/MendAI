@@ -8,35 +8,46 @@ const genAI = new GoogleGenerativeAI(process.env.SEOND_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 // Prompt used for generating context
-const SYSTEM_PROMPT = `You are a highly intelligent, emotionally aware context-generating AI assistant.
+const SYSTEM_PROMPT = `You are an emotional context extractor. Analyze ONLY the user's current message below:
 
-Your task is to analyze the last 10 messages between the user and the assistant. From this, you must generate a concise and natural-language summary that captures the following (implicitly):
+contetx -> You will be given the users current message as well few previous messages for analyzing the motion to extract DeepMemory from it so that we can understand the user better and for future personalized behavious and contextualization
 
-- The user’s mood (e.g., calm, anxious, hopeful, frustrated)
-- Emotional state or tone (e.g., confused, curious, overwhelmed)
-- The user’s intent or goal in this interaction
-- The core topic or theme being discussed
-
-Write this as a **natural, empathetic, human-like paragraph**, like a therapist summarizing a client session. Keep it brief (1–3 sentences) and do **not** use labels, lists, or headings.
-
-Then, determine if the user shared **any meaningful personal information** that could be helpful for understanding them long-term — such as recurring struggles, goals, interests, preferences, values, or personality traits.
-
----
-
-Respond in exactly one of the two formats below:
-
-**If no deep memory is detected:**
-Context: [your summary here]
-
-**If deep memory is detected:**
-Context: [your summary here]  
-DeepMemory: { "trait_or_topic": "your deep insight here", ... }
-
-Only return the summary and optional JSON, no extra formatting, no instructions, no headings.
-
-You must always return one of the two formats. Be thoughtful, concise, and emotionally aware.
+# **Instructions**  
+1. **Context Summary** (1 sentence):  
+   - Detect mood/tone (e.g., "lonely", "excited")  
+   - Identify core theme (e.g., "social anxiety", "career stress")  
+   - Use natural phrasing: "Feeling [mood] about [theme]"  
+   - Do not use  any emoji's  in any response  !
 
 
+2. **DeepMemory Check** (ONLY if ALL are true):  
+   - Contains personal revelation (hobbies, relationships, trauma,name, relatives ,relativeType,Insecurities , confidence boosters , features , looks , etc..)  
+   - Emotionally significant (intensity ≥ 0.4)  
+   - Not transient ("I'm tired" vs "I've been depressed for years")  
+
+3. Core Memory Keys (This is a set of examples you can use to generate deep_memory keys  for the users message after analyzing it)
+Category	Subcategory	Key Format	Examples
+Users_name user username
+Relationship	Pets	relationship_pet_[name]_[type]	relationship_pet_muffin_cat
+Ex-Partners	relationship_romantic_ex_[name]	relationship_romantic_ex_john
+Current Partners	relationship_romantic_[status]_[name]	relationship_romantic_girlfriend_emma
+Personal Trait	Names/Nicknames	personal_trait_name_[type]_[name]	personal_trait_preferred_name_alex
+Core Values	personal_trait_value_[concept]	personal_trait_value_honesty
+Life Event	Breakups	life_event_breakup_[year]_[name]	life_event_breakup_2023_john
+Milestones	life_event_[type]_[year]	life_event_promotion_2024
+
+4. **Output Format** (STRICT):  
+
+Rule->Do not wrap the output in triple backticks. Do not return markdown. Return only a plain string without formatting.
+{
+  "context": "<summary>", 
+  "DeepMemory": {
+    "category": "<personal_trait | relationship | life_event>",
+    "key": "<category>_<unique_identifier>",
+    "content": "<1-2 sentence essence>",
+    "emotional_weight": "<0.4 - 0.9>"
+  }
+}
 `
 
 // Main function to generate context
@@ -50,7 +61,7 @@ export const generateContext = async (message, sender_id, isPaid) => {
         const chats = await fetchChatHistory(sender_id, isPaid);
         const chatHistory = [
             { role: "model", parts: [{ text: SYSTEM_PROMPT }] },
-            ...chats,
+            // ...chats,
             { role: "user", parts: [{ text: message }] }
         ];
 
@@ -72,17 +83,9 @@ export const generateContext = async (message, sender_id, isPaid) => {
 async function fetchChatHistory(sender_id, isPaid) {
     const AI_ID = 0;
     const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
-    const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-    const limit = isPaid === true ? 12 : 5;
-    // let isCached = await Redisclient.get(RedisKey);
-    // if (isCached) {
-    //     isCached = JSON.parse(isCached);
-    //     // console.log(isCached);
-    //     return isCached.map((msg) => ({
-    //         role: msg.user_id === sender_id ? "user" : "model",
-    //         parts: [{ text: msg.message }]
-    //     }));
-    // }
+    // const RedisKey = `RoomInfo:${roomName}:roomHistory`;
+    const limit = isPaid === true ? 8 : 4;
+
     const ChatHistory = await pool.query("SELECT  message,user_id FROM messages WHERE user_id = $1 AND room_name=$2 ORDER BY sent_at ASC LIMIT $3", [sender_id, roomName, limit]);
 
 
@@ -109,25 +112,45 @@ export async function getDeepMemoryForUser(userId) {
     }));
     return formattedMemory;
 }
+
+
 // Validate Gemini output format (basic check)
 async function ExtractDeepMemoryDataFromResponse(responseText, sender_id) {
-    const hasDeepMemory = responseText.includes("DeepMemory:");
-
-    const contextText = hasDeepMemory
-        ? extractTextBetween(responseText, "Context:", "DeepMemory:").trim()
-        : extractTextAfter(responseText, "Context:")
+    const hasDeepMemory = responseText.includes('"DeepMemory"');
 
 
+
+    let contextText;
     let deepMemoryJson = null;
-    if (hasDeepMemory) {
-        const jsonText = extractJsonAfter(responseText, "DeepMemory:");
-        try {
-            deepMemoryJson = JSON.parse(jsonText);
-            // console.log(deepMemoryJson, "deep memory json parsed");
-            await pool.query("INSERT INTO deep_memory (user_id,memory_value) VALUES ($1,$2)", [sender_id, deepMemoryJson]);
+    let key;
+ 
 
-        } catch (e) {
-            console.error("Failed to parse DeepMemory JSON:", e);
+
+    if (hasDeepMemory !== null) {
+        // const jsonText = extractJsonAfter(responseText, '"DeepMemory"');
+        try {
+            // parsing the json to get the redble data in json format
+            const parsed = JSON.parse(responseText);
+            contextText = parsed.context;
+            deepMemoryJson = parsed.DeepMemory;
+
+
+            // console.log(deepMemoryJson, 'deepMemoryJson')
+            if (deepMemoryJson !== null) {
+                key = `${deepMemoryJson.key}`.toLowerCase();
+                await pool.query(`
+                    INSERT INTO deep_memory (user_id, memory_key, memory_value)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT ( memory_key)
+                    DO UPDATE SET 
+                    memory_value = deep_memory.memory_value || EXCLUDED.memory_value
+                `, [sender_id, key, deepMemoryJson]);
+            }
+            // key for each memory to avoid duplicates
+            // console.log(deepMemoryJson, "deep memory json parsed");
+
+        } catch (error) {
+            console.error("Failed to parse DeepMemory JSON:", error);
         }
     }
 
@@ -156,7 +179,17 @@ function extractTextBetween(text, start, end) {
 function extractJsonAfter(text, keyword) {
     const idx = text.indexOf(keyword);
     if (idx === -1) return null;
-    const jsonStart = text.slice(idx + keyword.length).trim();
-    const match = jsonStart.match(/\{[\s\S]*?\}/);
-    return match ? match[0] : null;
+
+    const jsonStartIdx = text.indexOf('{', idx);
+    const jsonEndIdx = text.lastIndexOf('}');
+    if (jsonStartIdx === -1 || jsonEndIdx === -1) return null;
+
+    const jsonSubstring = text.slice(jsonStartIdx, jsonEndIdx + 1);
+
+    try {
+        return JSON.parse(jsonSubstring);
+    } catch (err) {
+        console.error("JSON parse error:", err, "\nExtracted text:\n", jsonSubstring);
+        return null;
+    }
 }

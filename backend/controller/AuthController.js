@@ -158,7 +158,7 @@ export const Register = async (req, res) => {
 
 export const Login = (req, res) => {
     try {
-        // console.log(req.body)
+        console.log(req.body)
         
         const { email, password } = req.body;
         if (!email || !password) {

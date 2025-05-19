@@ -75,7 +75,6 @@ function App() {
 
         <Routes>
 
-          {/* <Route path='welcome' element={<Welcome />} /> */}
           <Route path='/Register' element={<SignupPage handleGoogleLogin={handleGoogleLogin} />} />
           <Route path='/' element={<InterFace color={color} user={user} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
           <Route path='/Login' element={<Login handleGoogleLogin={handleGoogleLogin} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />

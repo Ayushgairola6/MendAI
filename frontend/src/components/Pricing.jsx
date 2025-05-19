@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
-
+import {IoClose} from 'react-icons/io5'
 const Pricing = () => {
+    const [paymentStatus, setPaymentStatus] = useState("idle");
     const plans = [
         {
             name: "Lil Vibe",
@@ -33,6 +34,7 @@ const Pricing = () => {
     ];
 
     const handlePayment = async (amount, currency, validity, planType) => {
+        setPaymentStatus("pending")
         const token = localStorage.getItem("auth_token")
         try {
             const { data: order } = await axios.post("http://localhost:8080/payment/place-order", {
@@ -40,10 +42,10 @@ const Pricing = () => {
                 currency,
                 validity,
                 planType
-            },{
-                withCredentials:true,
-                headers:{
-                    "Authorization":`Bearer ${token}`
+            }, {
+                withCredentials: true,
+                headers: {
+                    "Authorization": `Bearer ${token}`
                 }
             });
 
@@ -52,7 +54,7 @@ const Pricing = () => {
                 amount: order.amount,
                 currency: order.currency,
                 validity: order.validity,
-                name: " mendAI",
+                name: " MendAI",
                 description: "Plan purchase",
                 order_id: order.id,
                 handler: async function (response) {
@@ -61,94 +63,115 @@ const Pricing = () => {
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_signature: response.razorpay_signature,
                         amount, currency, validity, planType
-                    },{
-                        withCredentials:true,
-                        headers:{
-                            "Authorization":`Bearer ${token}`
+                    }, {
+                        withCredentials: true,
+                        headers: {
+                            "Authorization": `Bearer ${token}`
                         }
                     })
-                if(verifyRes.data.success) {
-                    // alert("✅ Payment verified successfully!");
-        } else {
-            // alert("❌ Payment verification failed.");
-        }
-    },
-        prefill: {
-            name: "Random_dude",
-            email: "Randomdude123@gmail.com",
-            contact: "9999999999",
-        },
-        theme: {
-            color: "lime", // Tailwind pink-500
-        },
-};
+                    if (verifyRes.data.success) {
+                        setPaymentStatus("success");
+                    } else {
+                        setPaymentStatus("failed")
+                        setTimeout(()=>{
+                            setPaymentStatus("idle");
+                        },2000)
+                    }
+                },
+                // prefill: {
+                //     name: "Random_dude",
+                //     email: "Randomdude123@gmail.com",
+                //     contact: "9999999999",
+                // },
+                theme: {
+                    color: "lime", // Tailwind pink-500
+                },
+            };
 
-const razor = new window.Razorpay(options);
-razor.open();
+            const razor = new window.Razorpay(options);
+            razor.open();
         } catch (err) {
-    console.error("Payment error:", err);
-    alert("Payment failed!");
-}
+            console.error("Payment error:", err);
+            alert("Payment failed!");
+        }
     };
 
-return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center py-10">
-        <header className="mb-12 text-center">
-            <h1 className="text-4xl font-bold text-white tracking-tight">Your Vibe, Your Plan</h1>
-            <p className="text-base text-lime-400 mt-4">Choose a plan that feels right. Stay chill, stay connected.</p>
-        </header>
-
-        <div className="w-full max-w-6xl flex flex-col md:flex-row gap-6 justify-center items-start px-4">
-            {plans.map((plan, i) => (
+    return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 relative">
+            {paymentStatus !== "idle" ? (
                 <div
-                    key={i}
-                    className="flex-1 bg-black text-white rounded-xl border border-gray-200 p-8 transition-colors duration-300 ease-in-out w-full"
+                    className={`absolute top-5 right-5 border py-6 px-12 rounded-xl font-bold ${
+                        paymentStatus === "pending"
+                            ? "text-green-700 bg-green-200 border-green-700"
+                            : paymentStatus === "success"
+                            ? "text-sky-700 bg-sky-200 border-sky-700"
+                            : "text-red-700 bg-red-200 border-red-700"
+                    }`}
                 >
-                    <div className="flex justify-between items-center">
-                        <span className="bg-gradient-to-r from-lime-400 to-teal-400 text-black px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
-                            {plan.name}
-                        </span>
-                        <p className='text-xs text-gray-300'>{plan.planType}</p>
-                        <span className="text-sm text-gray-400">{plan.validity}days</span>
-                    </div>
-                    <div className="mt-4">
-                        <p className="text-2xl font-bold text-teal-500">${plan.Internationalprice}</p>
-                        <p className="text-2xl font-bold text-lime-500">₹{plan.IndianPrice}</p>
-                        <p className="mt-2 text-sm text-gray-300">{plan.description}</p>
-                    </div>
-                    <ul className="mt-6 space-y-2">
-                        {plan.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-center text-white text-sm">
-                                <span className="mr-2 text-pink-300">&#x2714;</span>
-                                {feature}
-                            </li>
-                        ))}
-                    </ul>
-
-                    {/* Two buttons for INR and USD */}
-                    <div className="mt-8 grid grid-cols-2 gap-2">
-                        <button
-                            onClick={() => handlePayment(plan.IndianPrice, "INR", plan.validity, plan.planType)}
-                            className="bg-lime-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-lime-600 transition-colors text-sm"
-                        >
-                            Pay ₹{plan.IndianPrice}
-                        </button>
-                        <button
-                            onClick={() => handlePayment(plan.Internationalprice, "USD", plan.validity, plan.planType)}
-                            className="bg-teal-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-teal-600 transition-colors text-sm"
-                        >
-                            Pay ${plan.Internationalprice}
-                        </button>
-                    </div>
+                    <IoClose onClick={()=>setPaymentStatus("idle")}  className='absolute top-2 right-2 cursor-pointer hover:bg-red-600 hover:text-white transition-all duration-300 rounded-xl'/>
+                    {paymentStatus === "pending"
+                        ? "Payment pending"
+                        : paymentStatus === "success"
+                        ? "Payment Verified"
+                        : "Payment unsuccessfull"}
                 </div>
-            ))}
-        </div>
+            ) : null}
+            <header className="mb-12 text-center">
+                <h1 className="text-4xl font-bold text-white tracking-tight">Your Vibe, Your Plan</h1>
+                <p className="text-base text-lime-400 mt-4">Choose a plan that feels right. Stay chill, stay connected.</p>
+            </header>
 
-        <footer className="mt-12 text-center text-gray-400 text-xs">
-            <p>Secure, accessible, and tuned to your vibe.</p>
-        </footer>
-    </div>
-);
+            <div className="w-full max-w-6xl flex flex-col md:flex-row gap-6 justify-center items-start px-4">
+                {plans.map((plan, i) => (
+                    <div
+                        key={i}
+                        className="flex-1 bg-black text-white rounded-xl border border-gray-200 p-8 transition-colors duration-300 ease-in-out w-full"
+                    >
+                        <div className="flex justify-between items-center">
+                            <span className="bg-gradient-to-r from-lime-400 to-teal-400 text-black px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
+                                {plan.name}
+                            </span>
+                            <p className='text-xs text-gray-300'>{plan.planType}</p>
+                            <span className="text-sm text-gray-400">{plan.validity}days</span>
+                        </div>
+                        <div className="mt-4">
+                            <p className="text-2xl font-bold text-teal-500">${plan.Internationalprice}</p>
+                            <p className="text-2xl font-bold text-lime-500">₹{plan.IndianPrice}</p>
+                            <p className="mt-2 text-sm text-gray-300">{plan.description}</p>
+                        </div>
+                        <ul className="mt-6 space-y-2">
+                            {plan.features.map((feature, idx) => (
+                                <li key={idx} className="flex items-center text-white text-sm">
+                                    <span className="mr-2 text-pink-300">&#x2714;</span>
+                                    {feature}
+                                </li>
+                            ))}
+                        </ul>
+
+                        {/* Two buttons for INR and USD */}
+                        <div className="mt-8 grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => handlePayment(plan.IndianPrice, "INR", plan.validity, plan.planType)}
+                                className="bg-lime-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-lime-600 transition-colors text-sm"
+                            >
+                                Pay ₹{plan.IndianPrice}
+                            </button>
+                            <button
+                                onClick={() => handlePayment(plan.Internationalprice, "USD", plan.validity, plan.planType)}
+                                className="bg-teal-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-teal-600 transition-colors text-sm"
+                            >
+                                Pay ${plan.Internationalprice}
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <footer className="mt-12 text-center text-gray-400 text-xs">
+                <p>Secure, accessible, and tuned to your vibe.</p>
+            </footer>
+        </div >
+    );
 };
 
 export default Pricing;

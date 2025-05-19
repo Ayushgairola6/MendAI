@@ -92,15 +92,15 @@ const EditProfile = ({ user, handelAccountDetails }) => {
                 </div>
 
                 <div className="flex flex-col items-center justify-center gap-3">
-                    <ul className="text-xl font-semibold flex items-center justify-center gap-2">
-                        <FaHeart color="red" />
+                    <ul className="text-xl font-semibold flex items-center justify-center gap-2 text-gray-300">
+                        {/* <FaHeart color="red" /> */}
                         {user ? user.name : "Not found"}
                     </ul>
                     <ul className="text-sm font-semibold">{user ? user.email : "Not found"}</ul>
                 </div>
             </div>
 
-            <div className="h-[50vh] flex items-center justify-center text-2xl font-bold">
+            <div className="h-screen text-center flex items-center justify-center text-xl font-sans ">
                 New features and options will be live soon!
             </div>
         </div>
