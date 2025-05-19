@@ -35,7 +35,7 @@ export const googleAuth = async (req, res) => {
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
                 // https://mendai.netlify.app
-                return res.redirect(`http://localhost:5173/oauth-success?token=${token}`);
+                return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
             }
         }
 
@@ -54,7 +54,7 @@ export const googleAuth = async (req, res) => {
             sameSite: "none",
             maxAge: 4 * 24 * 60 * 60 * 1000,
         });
-        return res.redirect(`http://localhost:5173/oauth-success?token=${token}`);
+        return res.redirect(`https://mendai.netlify.app/oauth-success?token=${token}`);
 
     } catch (error) {
         console.log(error)
@@ -90,7 +90,7 @@ export const googleMobileAuth = async (req, res) => {
                     sameSite: "none",
                     maxAge: 4 * 24 * 60 * 60 * 1000,
                 });
-                return res.redirect(`mendai://oauth-success?token=${token}`);
+                return res.redirect(`https://mendai.netlify.app//oauth-success?token=${token}`);
             }
         }
 
