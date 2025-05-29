@@ -510,7 +510,7 @@ export async function getChatHistory(req, res) {
 
         // if the chat history as been cached
         const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-        await Redisclient.del(RedisKey);
+        // await Redisclient.del(RedisKey);
         let previousChats = await Redisclient.get(RedisKey);
         if (previousChats) {
             previousChats = JSON.parse(previousChats);
@@ -545,7 +545,7 @@ export async function getChatHistory(req, res) {
         if (chats.rows.length === 0) {
             return res.status(200).json([]);
         }
-        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
+        await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
         return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
