@@ -63,7 +63,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
       style={{ backgroundColor: "black" }}
     >
       <div
-        className="w-full max-w-md rounded-xl shadow-xl p-6 space-y-6 shadow-gray-700"
+        className="w-full max-w-md rounded-xl  p-6 space-y-6 shadow-lg shadow-sky-700"
         style={{ backgroundColor: "black" }}
       >
         <h1 className="text-2xl font-bold text-center" style={{ color: "white" }}>
@@ -132,7 +132,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
         <div className="flex flex-col gap-3">
           <button
             onClick={handleGoogleLogin}
-            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all"
+            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all duration-300"
 
           >
             Continue with Google

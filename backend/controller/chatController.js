@@ -9,12 +9,64 @@ import { GetAIResponse } from "./ModelResponseController.js";
 import { GenerateNsfwResponse } from './NsfwController.js';
 import { generateContext } from "../ContextGenerator.js";
 import { Redisclient } from "../caching/RedisConfig.js";
+import { GoogleGenAI } from "@google/genai";
+import { QdrantClient } from "@qdrant/js-client-rest";
+import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 export const app = express();
 
+
+const qdrntclient = new QdrantClient({ url: 'https://27e55a12-d837-4fd5-95fc-a24126e9e6cb.us-east4-0.gcp.cloud.qdrant.io', apiKey: process.env.QDRNT_API_KEY });
 // creating an http server for both socket and api
 export const server = http.createServer(app);
 
+// creating a collection in vector databases
+async function createCollectionD() {
+    try {
+        await qdrntclient.createCollection("messages", {
+            vectors: {
+                size: 3072, // Match your embedding dimensions
+                distance: "Cosine",
+            }
+        });
+        console.log("Collection created successfully");
+
+        // 2. Create payload index with explicit schema
+        await qdrntclient.createPayloadIndex("messages", {
+            field_name: "sender_id",
+            field_schema: {
+                type: "integer" // Explicitly specify the type
+            }
+        });
+        console.log("Payload index for sender_id created");
+
+        // 3. Create index for message field (optional but recommended)
+        await qdrntclient.createPayloadIndex("messages", {
+            field_name: "message",
+            field_schema: {
+                type: "text" // For full-text search capabilities
+            }
+        });
+        console.log("Payload index for message created");
+
+        // 4. Create index for timestamp (optional but useful for filtering)
+        await qdrntclient.createPayloadIndex("messages", {
+            field_name: "timestamp",
+            field_schema: {
+                type: "datetime" // For time-based filtering
+            }
+        });
+        console.log("Payload index for timestamp created");
+
+        return true;
+    } catch (error) {
+        console.error("Setup error:", error);
+        return false;
+    }
+}
+// createCollectionD()
+
+// creating a new socket io server
 export const io = new Server(server, {
     cors: {
         origin: ["http://localhost:5173", "https://mendai.netlify.app"],
@@ -24,6 +76,14 @@ export const io = new Server(server, {
     }, transports: ['websocket', 'polling']
 });//new socket io instance object
 
+
+//async socket handler
+const asyncHandler = fn => (socket, ...args) => {
+    fn(socket, ...args).catch(error => {
+        console.error('Socket handler error:', error);
+        socket.emit('error', 'Internal server error');
+    });
+};
 
 //verifying and getting user token when a socket connection is established
 io.use((socket, next) => {
@@ -54,7 +114,7 @@ io.use((socket, next) => {
 
 
 // starting a new socket connection
-io.on("connection", async (socket) => {
+io.on("connection", asyncHandler(async (socket) => {
     const today = new Date().toISOString().split("T")[0];//month day and year format
     // Get tomorrow's date for resetting the limit
     const tomorrow = new Date();
@@ -94,13 +154,11 @@ io.on("connection", async (socket) => {
         const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
 
 
-
         // join the room so that the users in the room can see the live messages
         socket.join(roomName);
 
         const messagesSentUntilNow = await CheckMessageLimitStatus(sender_id);
         const totalSent = messagesSentUntilNow?.total_sent;
-        console.log(totalSent.total_sent);
         // Define limits per plan type
         const limits = {
             free: 50,
@@ -142,22 +200,35 @@ io.on("connection", async (socket) => {
             );
         }
 
+        // generating embedding for the message
+        const embeddings = await GenerateEmbedding(data.message);
 
-
-        const UserResponse = await pool.query(
-            "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
-            [roomName, sender_id, data.message, 'user']);
-        if (UserResponse.rowCount === 0) {
-            console.error("error while inserting user message in the database");
+        if (embeddings.length === 0 || !embeddings[0].values) {
+            console.log("Embedding was not generated", embeddings);
             return;
         }
+
+        // console.log(embeddings[0])
+        const storedUserMessageVectorDimensions = await StoreEmbeddings(embeddings, data.message, sender_id)
+        if (storedUserMessageVectorDimensions?.error) {
+            console.log(storedUserMessageVectorDimensions.error);
+            return;
+        }
+        const UserResponse = await pool.query(
+            "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
+            [roomName, sender_id, data.message, 'user'], (err, res) => {
+                if (err) {
+                    io.to(roomName).emit("newMessage", { message: "The Server is very  busy right now ", name: "Alice", user_id: AI_ID });
+                    console.log("Could not insert the user messgae in the database")
+                    return;
+                }
+            });
+       
         // caching the data
         const cachedUserMessage = await InsertChatsIntoMemory(roomName, data.message, sender_name, sender_id);
-        // console.log(cachedUserMessage, "cachedUserMessage");
-        await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
-        // const context2 = await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
 
-        // console.log(context2)
+        await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
+
 
         // emitting the message after insetion to the users in that particular room
         io.to(roomName).emit("newMessage", { message: data.message, name: sender_name, user_id: sender_id });
@@ -165,7 +236,7 @@ io.on("connection", async (socket) => {
         // generating ai response based on isPaid status , if user does not have a subscription use gemini for basic chats and companionship
         let aiResponse;
         // if (socket.userIsPaid === true) {
-        aiResponse = await GetAIResponse(data.message, sender_id, roomName, socket.userIsPaid);
+        aiResponse = await GetAIResponse(data.message, sender_id, roomName, socket.userIsPaid, embeddings);
         // console.log("gemini is responding", aiResponse)
 
         // } 
@@ -177,19 +248,34 @@ io.on("connection", async (socket) => {
         // }
         if (aiResponse?.error) {
             // console.log(aiResponse);
-            console.log("Ai response generation error");
+            console.log("Ai response generation error", aiResponse.error);
             return;
         }
 
+        const AiEmbedding = await GenerateEmbedding(aiResponse.response);
+        if (!AiEmbedding || !AiEmbedding[0]?.values) {
+            console.log("Error while creting embedding for the ai response", AiEmbedding)
+            return { error: "Error while creting embedding for the ai response" }
+        }
 
+        const storedAiResponseVectorDimensions = await StoreEmbeddings(AiEmbedding, aiResponse.response, AI_ID)
+
+        if (storedAiResponseVectorDimensions?.error) {
+            console.log(storedAiResponseVectorDimensions.error);
+            return;
+        }
         // then store in the database
         const modelResponse = await pool.query(
             "INSERT INTO messages (room_name, message,sender_type) VALUES ($1, $2,CAST($3 AS VARCHAR(10))) RETURNING *",
-            [roomName, aiResponse.response, 'model']);
-        if (modelResponse.rowCount === 0) {
-            console.log("Error while inserting ai response")
-            return;
-        }
+            [roomName, aiResponse.response, 'model'], (err, res) => {
+                if (err) {
+                    io.to(roomName).emit("newMessage", { message: "The Server is busy very right now", name: "Alice", user_id: AI_ID })
+                    console.log("Could not insert the ai messgae in the database")
+                    return;
+                }
+            });
+        // const modelResponse = await storeMessage(roomName, AI_ID, aiResponse.response, 'model')
+
         // store the ai response in the databse
         const cachedAiResposne = await InsertChatsIntoMemory(roomName, aiResponse.response, "Alice", AI_ID);
         const context = await InvokeContextGenerator(roomName, aiResponse.response, AI_ID, socket.userIsPaid);
@@ -204,7 +290,39 @@ io.on("connection", async (socket) => {
     socket.on("disconnect", () => {
         // console.log("User has been disconnected");
     });
-});
+}));
+
+// function to store messages in the database
+const storeMessage = async (roomName, senderId, message, senderType) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const res = await client.query(
+            `INSERT INTO messages 
+       (room_name, user_id, message, sender_type) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING *`,
+            [roomName, senderId, message, senderType]
+        );
+
+        await client.query(
+            `UPDATE rate_limit 
+       SET message_sent = message_sent + 1 
+       WHERE user_id = $1 AND date = $2`,
+            [senderId, new Date().toISOString().split('T')[0]]
+        );
+
+        await client.query('COMMIT');
+        return res.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 
 // this function wiill insert data intot  memory
 async function InsertChatsIntoMemory(roomName, message, sender_name, sender_id) {
@@ -392,7 +510,7 @@ export async function getChatHistory(req, res) {
 
         // if the chat history as been cached
         const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-        // await Redisclient.del(RedisKey);
+        await Redisclient.del(RedisKey);
         let previousChats = await Redisclient.get(RedisKey);
         if (previousChats) {
             previousChats = JSON.parse(previousChats);
@@ -427,7 +545,7 @@ export async function getChatHistory(req, res) {
         if (chats.rows.length === 0) {
             return res.status(200).json([]);
         }
-        await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
+        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
         return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
@@ -454,5 +572,120 @@ const CheckMessageLimitStatus = async (sender_id) => {
     } catch (error) {
         console.log(error);
         return { issue: error };
+    }
+}
+
+// function to geenrate vector embeddin fot eh user message or the ai message
+
+const GenerateEmbedding = async (message) => {
+    try {
+        if (!message?.trim()) {
+            console.error(message, "Empty message recieved")
+            return { error: "A message is required to generate an embedding" };
+        }
+        const ai = new GoogleGenAI({
+            apiKey: process.env.SEOND_API_KEY,
+            timeout: 5000 // Add timeout
+        });
+        const retries = 2;
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await ai.models.embedContent({
+                    model: 'gemini-embedding-exp-03-07',
+                    contents: message,
+                    config: { taskType: "SEMANTIC_SIMILARITY" }
+                });
+
+                if (!response.embeddings) {
+                    throw new Error("No embeddings in response");
+                }
+
+                return response.embeddings;
+
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+        }
+    } catch (error) {
+        console.error("Embedding generation failed:", error.message);
+        throw error; // Re-throw for upstream handling
+    }
+}
+
+//  function to insert the embeddings into qdrnt databasee
+
+const StoreEmbeddings = async (embeddings, message, sender_id) => {
+    try {
+        if (!embeddings || !message || sender_id === null || sender_id === undefined) {
+            console.log(embeddings, message, sender_id)
+            return { error: "An array of vector dimensions is a must to proceed any further" };
+        }
+        const newId = uuidv4();
+
+
+
+        await qdrntclient.upsert("messages", {
+            points: [{
+                id: newId,//generated unique uuid
+                vector: embeddings[0].values,
+                payload: {
+                    message: message, // text
+                    sender_id: parseInt(sender_id), // integer
+                    timestamp: new Date().toISOString() // datetime
+                }
+            }]
+        });
+        console.log("Message stored successfully");
+        return true;
+    } catch (error) {
+        console.error("Insert error:", error);
+        return false;
+    }
+}
+
+export const getMatchingMessages = async (message, sender_id, embeddings) => {
+    try {
+        if (!message || sender_id === null || sender_id === undefined || !embeddings) {
+            return { error: "A message or sender_id is missing from the inputs" };
+        }
+        // console.log("Embeddings length:", embeddings.length);
+
+        try {
+
+            const results = await qdrntclient.search("messages", {
+                vector: embeddings[0].values,
+                limit: 8,
+                with_payload: true,
+                filter: {
+                    must: [{
+                        key: "sender_id",
+                        match: {
+                            value: parseInt(sender_id) // Must match integer type
+                        }
+                    }]
+                }
+            });
+
+            if (!results || results.length === 0) {
+                return [];
+            }
+            const FormattedResulsts = results.map((msg) => ({
+                role: msg.payload.user_id === sender_id ? "user" : "model",
+                parts: [{ text: msg.payload.message }]
+            }));
+
+            return FormattedResulsts;
+
+        } catch (error) {
+            console.error("Search error:", error);
+            throw error;
+        }
+
+
+
+    } catch (err) {
+        console.error(err)
+        return { error: err }
     }
 }

@@ -12,7 +12,9 @@
   },
   "keywords": [],
   "dependencies": {
+    "@google/genai": "^1.1.0",
     "@google/generative-ai": "^0.21.0",
+    "@qdrant/js-client-rest": "^1.14.1",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.52.2",
     "cookie": "^1.0.2",
@@ -33,6 +35,7 @@
     "pg": "^8.14.1",
     "razorpay": "^2.9.6",
     "redis": "^5.0.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uuid": "^11.1.0"
   }
 }

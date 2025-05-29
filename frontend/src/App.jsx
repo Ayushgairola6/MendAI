@@ -10,17 +10,21 @@ import EditProfile from './components/EditProfile';
 import OAuthSuccess from './components/OauthSuccesPage';
 import Pricing from './components/Pricing'
 import Welcome from './components/welcome';
+import Home from './components/Home';
+import AppModal from './components/DownloadAppModal';
 function App() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [color, setColor] = useState("Light")
   const [delay, setDelay] = useState(false);
+  const [isSeen, setSeen] = useState(false);
+
   //  function to fetch user details
   useEffect(() => {
     const timer = setTimeout(() => {
       setDelay(true);
-    }, 2500)
+    }, 3500)
     return () => clearTimeout(timer);
   }, [])
 
@@ -70,11 +74,9 @@ function App() {
 
     <Router>
       {delay === true ? <>
-        <Navbar isLoggedIn={isLoggedIn} color={color} setColor={setColor} user={user} />
-
+        <Navbar isSeen={isSeen} setSeen={setSeen} isLoggedIn={isLoggedIn} color={color} setColor={setColor} user={user} />
 
         <Routes>
-
           <Route path='/Register' element={<SignupPage handleGoogleLogin={handleGoogleLogin} />} />
           <Route path='/' element={<InterFace color={color} user={user} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
           <Route path='/Login' element={<Login handleGoogleLogin={handleGoogleLogin} isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} />} />
@@ -82,10 +84,8 @@ function App() {
           <Route path='/oauth-success' element={<OAuthSuccess isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
           <Route path='/Plans' element={<Pricing isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn} handelAccountDetails={handelAccountDetails} />} />
 
-        </Routes></> : <Welcome />}
+        </Routes></> : <Welcome delay={delay} setDelay={setDelay}/>}
     </Router>
-
-
 
 
   </>

@@ -94,7 +94,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
   return (
     <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white relative">
-      <div className={`${aiThinking === true  ? "block" : "hidden"} absolute top-20 left-20 flex items-center justify-center rounded-xl font-bold text-white animate-pulse bg-black p-4 border border-indigo-700 transition-all duration-300`}>
+      <div className={`${aiThinking === true ? "block" : "hidden"} absolute top-20 right-20 flex items-center justify-center rounded-xl font-bold text-black animate-pulse bg-gray-400 border border-l-purple-700 border-b-blue-700 border-r-indigo-700 border-t-sky-700 p-2  transition-all `}>
         <span>Thinking..</span>
       </div>
 
@@ -102,9 +102,9 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-700">
-          {messages.length > 0 && user !== null ? (
+          {messages !== null && messages.length > 0 && user !== null ? (
             <AnimatePresence>
-              {messages.map((msg, index) => (
+              {messages.map((msg, index) => (<>
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 10 }}
@@ -120,9 +120,20 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
                     <p className={` font-semibold ${msg.user_id === user.id ? "font-sans" : "font-mono"}`}>{msg.message}</p>
 
                   </div>
-                  <div className="relative" ref={bottomRef}></div>
+                  <motion.div
+                    key="typing-indicator" // Essential for AnimatePresence to work on its own
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex justify-start" // Typically Alice's message, so justify-start
+                  >
+                    {/* <TypingIndicator /> */}
+                  </motion.div>
+                  <div className="relative  " ref={bottomRef}></div>
 
                 </motion.div>
+              </>
               ))}
             </AnimatePresence>
           ) : (
@@ -137,11 +148,11 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
             ref={InputRef}
             type="text"
             placeholder="Type your message..."
-            className="flex-1 bg-gray-800 text-white font-sans  px-4 py-5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all duration-200 shadow-inner"
+            className="flex-1 ring-gray-400 ring-1 text-white font-sans  px-4 py-5 rounded-lg focus:outline-none focus:ring-1 focus:ring-white-500 text-sm transition-all duration-200 shadow-inner"
           />
           {aiThinking === false ? <motion.button
-            whileTap={{ scale: 0.9}}
-            className="ml-3 bg-sky-600 text-black font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
+            whileTap={{ scale: 0.9 }}
+            className="ml-3 bg-gradient-to-br from-[#77A1D3] via-[#79CBCA] to-[#E684AE] text-black font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
           >
             Send
           </motion.button> : <button className="ml-3 bg-gradient-to-r from-white/15  to-white/5 border  text-white font-bold px-4 py-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all ">Send</button>}

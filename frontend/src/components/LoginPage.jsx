@@ -47,9 +47,12 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
 
   return (
     <div className="h-screen flex items-center justify-center p-4" style={{ backgroundColor: "black" }}>
-      <div className="w-full max-w-md rounded-xl shadow-lg p-6 space-y-6 bg-black">
-        <h1 className="text-2xl font-bold text-white text-center">Welcome Back</h1>
-        <p className="text-gray-300 text-center">Sign in to continue</p>
+      <div className="w-full max-w-md rounded-xl  p-6 space-y-6 bg-black shadow-lg shadow-sky-700">
+        <section className="">
+          <h1 className="text-3xl font-bold text-white text-center">Welcome Back</h1>
+          <p className="text-gray-300 text-center">Sign in to continue where you left off </p>
+        </section>
+
 
         <div className="space-y-4">
           <input
@@ -78,7 +81,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
           <button
             onClick={handleLogin}
             type="submit"
-            className="w-full bg-gradient-to-r from-sky-500 to-purple-500 text-white font-bold py-2 rounded-lg hover:from-purple-500 hover:to-sky-500 transition-all duration-500 ease-in-out"
+            className="w-full bg-gradient-to-r from-sky-500 to-purple-500 text-white font-bold py-2 rounded-lg hover:from-purple-500 hover:to-sky-500 transition-all duration-500 ease-in-out cursor-pointer"
             style={{ backgroundColor: "gray", color: "white" }}
           >
             Login
@@ -101,7 +104,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
         <div className="flex flex-col gap-3">
           <button
             onClick={handleGoogleLogin}
-            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all"
+            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all duration-300"
           >
             Continue with Google
           </button>

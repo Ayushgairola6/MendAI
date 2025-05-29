@@ -7,37 +7,41 @@ import dotenv from 'dotenv';
 import { Redisclient } from "../caching/RedisConfig.js";
 dotenv.config();
 import { getDeepMemoryForUser } from "../ContextGenerator.js";
+import { getMatchingMessages } from "./chatController.js";
 
 // Generates AI response using merged summaries and recent messages
-export const GetAIResponse = async (message, sender_id, roomName, userIsPaid) => {
+//based on matching cosine values
+export const GetAIResponse = async (message, sender_id, roomName, userIsPaid, embeddings) => {
   try {
-    if (!message || !roomName) {
+    if (!message || !roomName || !embeddings) {
       return { error: "AI requires input to respond" };
     }
 
-    // if (userIsPaid !== false) {
-    //   console.log(userIsPaid);
-    //   return { error: "This User has a Premium Subscription " };
-    // }
+    const MatchingMessagesFromQdrnt = await getMatchingMessages(message, sender_id, embeddings);
 
-
-    // Build full context: summaries + recent chats + current message
+    // Get context from summaries/recent chats (ContextProvider should return an array of messages)
     const combinedContext = await ContextProvider(sender_id, userIsPaid);
-    combinedContext.push({ role: "user", parts: [{ text: message }] });
-    let deep_memory;
-    if (await getDeepMemoryForUser(sender_id) === null) {
-      deep_memory = [];
-    } else {
-      deep_memory = await getDeepMemoryForUser(sender_id);
+
+    let deep_memory_messages = []; // Use a more descriptive name
+    if (await getDeepMemoryForUser(sender_id) !== null) {
+      deep_memory_messages = await getDeepMemoryForUser(sender_id); // Ensure this also returns an array of message objects
     }
-    // sending the conext to the model
-    // console.log(deep_memory);
+
+    // IMPORTANT: Construct the full conversation history array correctly
+    const conversationHistory = [
+      { role: "model", parts: [{ text: process.env.SYSTEM_PROMPT }] }, // The initial system prompt (Alice's persona)
+      ...deep_memory_messages, // Your long-term memory
+      ...combinedContext,     // Summaries and potentially recent chats (from ContextProvider)
+      ...MatchingMessagesFromQdrnt // Relevant messages from Qdrant
+    ];
+
+    // Add the current user message at the very end of the history
+    conversationHistory.push({ role: "user", parts: [{ text: message }] });
+
+    // console.log("Final Conversation History:", JSON.stringify(conversationHistory, null, 2)); // For debugging
+
     const result = await model.generateContent({
-      contents: [
-        { role: "model", parts: [{ text: process.env.SYSTEM_PROMPT }] },
-        ...combinedContext,
-        ...deep_memory
-      ],
+      contents: conversationHistory, // Pass the combined conversation history here
       generationConfig: {
         temperature: 0.8,
         topP: 0.95,
@@ -45,9 +49,10 @@ export const GetAIResponse = async (message, sender_id, roomName, userIsPaid) =>
         maxOutputTokens: 600,
       }
     });
+
     const responseText = result.response.text();
     if (!responseText) {
-      return { error: "ALICE was unable to generate a response, please try again later" };
+      return "I am having some issues right now, can we talk later, I am really sorry for this issue, thanks for understanding me ";
     }
 
     return { sender: sender_id, response: responseText };
@@ -57,6 +62,9 @@ export const GetAIResponse = async (message, sender_id, roomName, userIsPaid) =>
   }
 };
 
+
+
+
 // Provides merged context: summaries first, then recent messages
 async function ContextProvider(sender_id, userIsPaid) {
   if (!sender_id) return [];
@@ -65,37 +73,19 @@ async function ContextProvider(sender_id, userIsPaid) {
     const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
     const RedisKey = `RoomInfo:${roomName}:roomHistory`;
     const hasHistoryCached = await Redisclient.get(RedisKey);
+
     if (hasHistoryCached) {
       const parsedHistory = JSON.parse(hasHistoryCached);
+      // Ensure these are proper message objects if they contain user/model turns
       return parsedHistory
         .filter(msg => msg.message && msg.message.trim().length > 0)
         .map(msg => ({
-          role: msg.sender_type === "user" ? "user" : "model",
+          role: msg.sender_type === "user" ? "user" : "model", // Assuming msg.sender_type exists in cached data
           parts: [{ text: msg.message }]
         }));
     }
-    // console.log(hasHistoryCached);
-    //  last 6 messages
-    // const lastChatsQuery = `
-    //   SELECT sender_type, message
-    //   FROM messages
-    //   WHERE room_name = $1
-    //   ORDER BY sent_at DESC
-    //   LIMIT $2
-    // `;
-    // const { rows: chatRows } = await pool.query(lastChatsQuery, [roomName, userIsPaid === false ? 5 : 20]);
-    // const formattedRecent = chatRows.reverse().map(msg => {
-    //   if (!msg.message) return null;
-    //   return {
-    //     role: msg.sender_type === "user" ? "user" : "model",
-    //     parts: [{ text: msg.message }]
-    //   };
-    // }).filter(Boolean); // removes null
 
 
-
-
-    //last ten summary
     const contextQuery = `
       SELECT summary
       FROM chat_context
@@ -107,16 +97,16 @@ async function ContextProvider(sender_id, userIsPaid) {
     const formattedSummaries = summaryRows.map(r => {
       if (!r.summary) return null;
       return {
-        role: "model",
+        role: "model", // Assuming summaries are generated by the model/system
         parts: [{ text: r.summary }]
       };
     }).filter(Boolean);
 
-    // returning the memory and recent texts
+    // If you intend to use recent chats, uncomment and ensure 'formattedRecent' is properly defined.
+    // Right now, this function ONLY returns summaries if Redis cache is missed.
     return [
       ...formattedSummaries,
-      // ...formattedRecent,
-      // ...parsedHistory
+      // ...formattedRecent, // If you want to include these, uncomment this and the related SQL query above
     ];
   } catch (error) {
     console.error("ContextProvider error:", error);
