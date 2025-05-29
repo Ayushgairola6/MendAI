@@ -37,7 +37,7 @@ const Pricing = () => {
         setPaymentStatus("pending")
         const token = localStorage.getItem("auth_token")
         try {
-            const { data: order } = await axios.post("http://localhost:8080/payment/place-order", {
+            const { data: order } = await axios.post("https://mendai.onrender.com/payment/place-order", {
                 amount: currency === "INR" ? amount : Math.round(amount * 83),
                 currency,
                 validity,
@@ -58,7 +58,7 @@ const Pricing = () => {
                 description: "Plan purchase",
                 order_id: order.id,
                 handler: async function (response) {
-                    const verifyRes = await axios.post("http://localhost:8080/payment/clearance", {
+                    const verifyRes = await axios.post("https://mendai.onrender.com/payment/clearance", {
                         razorpay_payment_id: response.razorpay_payment_id,
                         razorpay_order_id: response.razorpay_order_id,
                         razorpay_signature: response.razorpay_signature,
