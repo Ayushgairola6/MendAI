@@ -12,6 +12,7 @@
   },
   "keywords": [],
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.1.0",
     "@google/genai": "^1.1.0",
     "@google/generative-ai": "^0.21.0",
     "@qdrant/js-client-rest": "^1.14.1",

@@ -223,7 +223,7 @@ io.on("connection", asyncHandler(async (socket) => {
                     return;
                 }
             });
-       
+
         // caching the data
         const cachedUserMessage = await InsertChatsIntoMemory(roomName, data.message, sender_name, sender_id);
 
@@ -249,6 +249,7 @@ io.on("connection", asyncHandler(async (socket) => {
         if (aiResponse?.error) {
             // console.log(aiResponse);
             console.log("Ai response generation error", aiResponse.error);
+            io.to(roomName).emit("newMessage", { message: "The Server has a lots of users right now so there are some issues , please try again later! ", name: "Alice", user_id: AI_ID });
             return;
         }
 

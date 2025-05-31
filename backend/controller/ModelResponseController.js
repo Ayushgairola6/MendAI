@@ -52,7 +52,7 @@ export const GetAIResponse = async (message, sender_id, roomName, userIsPaid, em
 
     const responseText = result.response.text();
     if (!responseText) {
-      return "I am having some issues right now, can we talk later, I am really sorry for this issue, thanks for understanding me ";
+      return {error: "I am having some issues right now, can we talk later, I am really sorry for this issue, thanks for understanding me "}
     }
 
     return { sender: sender_id, response: responseText };
