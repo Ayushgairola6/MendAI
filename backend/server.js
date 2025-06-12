@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import { pool } from './Database.js';
 import multer from 'multer';
 import { server, app } from "./controller/chatController.js";
-import { Register, Login, LoginStateUpdate, googleAuth, googleMobileAuth, } from './controller/AuthController.js';
+import { Register, Login, LoginStateUpdate, googleAuth, googleMobileAuth, ResetPassword } from './controller/AuthController.js';
 import { getChatHistory } from './controller/chatController.js';
 import { verifyToken } from './AuthMiddleware.js';
 import { GetAccountData, uploadUserImages, upload } from './controller/userController.js';
@@ -58,7 +58,7 @@ Router.get("/api/mobile/auth/google", (req, res, next) => {
 	.get("/api/chat/history/data", verifyToken, getChatHistory)
 	.post("/payment/place-order", verifyToken, placeOrder)
 	.post("/payment/clearance", verifyToken, verifyPayment)
-
+	.post("/api/reset-password", verifyToken, ResetPassword)
 app.use(Router);
 
 server.listen(process.env.PORT, "0.0.0.0", () => {

@@ -12,6 +12,7 @@ import { Redisclient } from "../caching/RedisConfig.js";
 import { GoogleGenAI } from "@google/genai";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { v4 as uuidv4 } from 'uuid';
+import e from "express";
 dotenv.config();
 export const app = express();
 
@@ -23,16 +24,16 @@ export const server = http.createServer(app);
 // creating a collection in vector databases
 async function createCollectionD() {
     try {
-        await qdrntclient.createCollection("messages", {
+        await qdrntclient.createCollection("message_summaries", {
             vectors: {
                 size: 3072, // Match your embedding dimensions
                 distance: "Cosine",
             }
         });
-        console.log("Collection created successfully");
+        // console.log("Collection created successfully");
 
         // 2. Create payload index with explicit schema
-        await qdrntclient.createPayloadIndex("messages", {
+        await qdrntclient.createPayloadIndex("message_summaries", {
             field_name: "sender_id",
             field_schema: {
                 type: "integer" // Explicitly specify the type
@@ -41,16 +42,16 @@ async function createCollectionD() {
         console.log("Payload index for sender_id created");
 
         // 3. Create index for message field (optional but recommended)
-        await qdrntclient.createPayloadIndex("messages", {
+        await qdrntclient.createPayloadIndex("message_summaries", {
             field_name: "message",
             field_schema: {
                 type: "text" // For full-text search capabilities
             }
         });
-        console.log("Payload index for message created");
+        // console.log("Payload index for message created");
 
         // 4. Create index for timestamp (optional but useful for filtering)
-        await qdrntclient.createPayloadIndex("messages", {
+        await qdrntclient.createPayloadIndex("message_summaries", {
             field_name: "timestamp",
             field_schema: {
                 type: "datetime" // For time-based filtering
@@ -201,19 +202,20 @@ io.on("connection", asyncHandler(async (socket) => {
         }
 
         // generating embedding for the message
-        const embeddings = await GenerateEmbedding(data.message);
+        const embeddings = await GenerateMatchingChatHistoryEmbedding(data.message);
 
-        if (embeddings.length === 0 || !embeddings[0].values) {
+        if (embeddings.length === 0 || !embeddings[0].values || embeddings.error) {
             console.log("Embedding was not generated", embeddings);
+            io.to(roomName).emit("newMessage", { message: "The Server has a lots of users right now so there are some issues , please try again later! ", name: "Alice", user_id: AI_ID });
             return;
         }
 
         // console.log(embeddings[0])
-        const storedUserMessageVectorDimensions = await StoreEmbeddings(embeddings, data.message, sender_id)
-        if (storedUserMessageVectorDimensions?.error) {
-            console.log(storedUserMessageVectorDimensions.error);
-            return;
-        }
+        // const storedUserMessageVectorDimensions = await StoreEmbeddings(embeddings, data.message, sender_id)
+        // if (storedUserMessageVectorDimensions?.error) {
+        //     console.log(storedUserMessageVectorDimensions.error);
+        //     return;
+        // }
         const UserResponse = await pool.query(
             "INSERT INTO messages (room_name, user_id, message,sender_type) VALUES ($1, $2, $3,$4) RETURNING *",
             [roomName, sender_id, data.message, 'user'], (err, res) => {
@@ -227,7 +229,7 @@ io.on("connection", asyncHandler(async (socket) => {
         // caching the data
         const cachedUserMessage = await InsertChatsIntoMemory(roomName, data.message, sender_name, sender_id);
 
-        await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid);
+        await InvokeContextGenerator(roomName, data.message, sender_id, socket.userIsPaid, socket.userplanType);
 
 
         // emitting the message after insetion to the users in that particular room
@@ -253,18 +255,19 @@ io.on("connection", asyncHandler(async (socket) => {
             return;
         }
 
-        const AiEmbedding = await GenerateEmbedding(aiResponse.response);
-        if (!AiEmbedding || !AiEmbedding[0]?.values) {
-            console.log("Error while creting embedding for the ai response", AiEmbedding)
-            return { error: "Error while creting embedding for the ai response" }
-        }
+        // const AiEmbedding = await GenerateEmbedding(aiResponse.response);
+        // if (!AiEmbedding || !AiEmbedding[0]?.values || embeddings.error) {
+        //     console.log("Error while creting embedding for the ai response", AiEmbedding)
+        //     io.to(roomName).emit("newMessage", { message: "The Server has a lots of users right now so there are some issues , please try again later! ", name: "Alice", user_id: AI_ID });
+        //     return { error: "Error while creting embedding for the ai response" }
+        // }
 
-        const storedAiResponseVectorDimensions = await StoreEmbeddings(AiEmbedding, aiResponse.response, AI_ID)
+        // const storedAiResponseVectorDimensions = await StoreEmbeddings(AiEmbedding, aiResponse.response, AI_ID)
 
-        if (storedAiResponseVectorDimensions?.error) {
-            console.log(storedAiResponseVectorDimensions.error);
-            return;
-        }
+        // if (storedAiResponseVectorDimensions?.error) {
+        //     console.log(storedAiResponseVectorDimensions.error);
+        //     return;
+        // }
         // then store in the database
         const modelResponse = await pool.query(
             "INSERT INTO messages (room_name, message,sender_type) VALUES ($1, $2,CAST($3 AS VARCHAR(10))) RETURNING *",
@@ -364,134 +367,58 @@ async function InsertChatsIntoMemory(roomName, message, sender_name, sender_id) 
 export const InvokeContextGenerator = async (roomName, message, sender_id, isPaid, plan_type) => {
     try {
         if (!roomName || !sender_id || isPaid === null || isPaid === undefined || !message) {
-            // console.error(roomName, message, sender_id, isPaid)
-            return { error: "All the data was not given to the increment counter" }
+            return { error: "All the data was not given to the increment counter" };
         }
-        // counter state to verify the current state of users context generation status
-        const CounterCheckQuery = await pool.query(`SELECT * from context_counter WHERE room_name = $1`, [roomName]);
-        // console.log(CounterCheckQuery.rows)
-        if (isPaid === false) {
-            if (CounterCheckQuery.rows.length === 0) {
-                // console.log("starting a new counter instance")
-                await pool.query(
-                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
-                    [0, roomName]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 15) {
-                // console.log("resetting the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
-                    [0, roomName]
-                );
 
-                const context = await generateContext(message, sender_id, isPaid);
-                if (!context) {
-                    return { error: "Error while generating summary of the conversation" };
-                }
-                // console.log("generating the context and reseting the counter")
-                await pool.query(
-                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
-                    [roomName, context]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 15) {
-                // console.log("incrementing the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
-                    [roomName]
-                );
-            }
-        } else if (isPaid === true && plan_type === "Casual Vibes") {
-            if (CounterCheckQuery.rows.length === 0) {
-                // console.log("starting a new counter instance")
-                await pool.query(
-                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
-                    [0, roomName]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 8) {
-                // console.log("resetting the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
-                    [0, roomName]
-                );
-
-                const context = await generateContext(message, sender_id, isPaid);
-                if (!context) {
-                    return { error: "Error while generating summary of the conversation" };
-                }
-                // console.log("generating the context and reseting the counter")
-                await pool.query(
-                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
-                    [roomName, context]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 8) {
-                // console.log("incrementing the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
-                    [roomName]
-                );
-            }
-        } else if (isPaid === true && plan_type === "Getting spicy") {
-            if (CounterCheckQuery.rows.length === 0) {
-                // console.log("starting a new counter instance")
-                await pool.query(
-                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
-                    [0, roomName]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 5) {
-                // console.log("resetting the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
-                    [0, roomName]
-                );
-
-                const context = await generateContext(message, sender_id, isPaid);
-                if (!context) {
-                    return { error: "Error while generating summary of the conversation" };
-                }
-                // console.log("generating the context and reseting the counter")
-                await pool.query(
-                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
-                    [roomName, context]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 5) {
-                // console.log("incrementing the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
-                    [roomName]
-                );
-            }
+        // Normalize plan_type for easier comparison
+        const normalizedPlan = (plan_type || "").toLowerCase();
+        console.log(plan_type, normalizedPlan, "plan with normalized plan");
+        // Determine interval based on user status and plan
+        let interval = 15; // default for free/unpaid
+        if (isPaid) {
+            if (normalizedPlan === "casual vibes") interval = 10;
+            else if (normalizedPlan === "getting spicy") interval = 7;
+            else if (normalizedPlan === "serious series") interval = 3; // or 4 if you want, change here
         } else {
-            if (CounterCheckQuery.rows.length === 0) {
-                // console.log("starting a new counter instance")
-                await pool.query(
-                    `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
-                    [0, roomName]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 2) {
-                // console.log("resetting the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
-                    [0, roomName]
-                );
-
-                const context = await generateContext(message, sender_id, isPaid);
-                if (!context) {
-                    return { error: "Error while generating summary of the conversation" };
-                }
-                console.log("generating the context and reseting the counter")
-                await pool.query(
-                    `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
-                    [roomName, context]
-                );
-            } else if (CounterCheckQuery.rows[0].count >= 0 && CounterCheckQuery.rows[0].count <= 2) {
-                // console.log("incrementing the counter")
-                await pool.query(
-                    `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
-                    [roomName]
-                );
-            }
+            // If plan_type is null, undefined, or "NULL" (string), treat as free
+            if (!plan_type || normalizedPlan === "null") interval = 15;
         }
 
+        // Check current counter
+        const CounterCheckQuery = await pool.query(`SELECT * from context_counter WHERE room_name = $1`, [roomName]);
+        const counterRow = CounterCheckQuery.rows[0];
+
+        if (!counterRow) {
+            // No counter exists, create one
+            console.log("Inserting a new counter value in the database")
+            await pool.query(
+                `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
+                [0, roomName]
+            );
+        } else if (counterRow.count >= interval) {
+            // Reset counter and generate context
+            await pool.query(
+                `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
+                [0, roomName]
+            );
+            console.log("resetting the counter value in the db")
+            const context = await generateContext(message, sender_id, isPaid, plan_type);
+            if (!context) {
+                return { error: "Error while generating summary of the conversation" };
+            }
+            await pool.query(
+                `INSERT INTO chat_context (room_name, summary) VALUES ($1, $2)`,
+                [roomName, context]
+            );
+        } else if (counterRow.count >= 0 && counterRow.count < interval) {
+            // Increment the counter
+            console.log("Incrementing the  counter value in the db")
+
+            await pool.query(
+                `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
+                [roomName]
+            );
+        }
     } catch (error) {
         console.error(error);
     }
@@ -511,12 +438,12 @@ export async function getChatHistory(req, res) {
 
         // if the chat history as been cached
         const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-        // await Redisclient.del(RedisKey);
-        let previousChats = await Redisclient.get(RedisKey);
-        if (previousChats) {
-            previousChats = JSON.parse(previousChats);
-            return res.status(200).json(previousChats);
-        }
+        await Redisclient.del(RedisKey);
+        // let previousChats = await Redisclient.get(RedisKey);
+        // if (previousChats) {
+        //     previousChats = JSON.parse(previousChats);
+        //     return res.status(200).json(previousChats);
+        // }
         const currentDate = new Date();
         //  fetch messages from messages tables where user id is present but only last 8
         const User_isPaid = await pool.query(`SELECT * FROM payments WHERE user_id = $1 ORDER BY created_at DESC`, [userId])
@@ -546,7 +473,7 @@ export async function getChatHistory(req, res) {
         if (chats.rows.length === 0) {
             return res.status(200).json([]);
         }
-        await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
+        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
         return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
@@ -578,10 +505,10 @@ const CheckMessageLimitStatus = async (sender_id) => {
 
 // function to geenrate vector embeddin fot eh user message or the ai message
 
-const GenerateEmbedding = async (message) => {
+export const GenerateEmbedding = async (message) => {
     try {
         if (!message?.trim()) {
-            console.error(message, "Empty message recieved")
+            // console.error(message, "Empty message recieved")
             return { error: "A message is required to generate an embedding" };
         }
         const ai = new GoogleGenAI({
@@ -597,8 +524,44 @@ const GenerateEmbedding = async (message) => {
                     config: { taskType: "SEMANTIC_SIMILARITY" }
                 });
 
-                if (!response.embeddings) {
-                    throw new Error("No embeddings in response");
+                if (!response.embeddings || response.error) {
+                    return { error: "No embeddings were generated , maybe the tokens have been exhausted" }
+                }
+                // console.log(response.embeddings,"response embeddings at generte embeddings function")
+                return response.embeddings;
+
+            } catch (error) {
+                if (i === retries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+        }
+    } catch (error) {
+        console.error("Embedding generation failed:", error.message);
+        throw error; // Re-throw for upstream handling
+    }
+}
+// generate embeddings for the current users message
+const GenerateMatchingChatHistoryEmbedding = async (message) => {
+    try {
+        if (!message?.trim()) {
+            // console.error(message, "Empty message recieved")
+            return { error: "A message is required to generate an embedding" };
+        }
+        const ai = new GoogleGenAI({
+            apiKey: process.env.SEOND_API_KEY,
+            timeout: 5000 // Add timeout
+        });
+        const retries = 2;
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await ai.models.embedContent({
+                    model: 'gemini-embedding-exp-03-07',
+                    contents: message,
+                    config: { taskType: "SEMANTIC_SIMILARITY" }
+                });
+
+                if (!response.embeddings || response.error) {
+                    return { error: "No embeddings were generated , maybe the tokens have been exhausted" }
                 }
 
                 return response.embeddings;
@@ -612,24 +575,24 @@ const GenerateEmbedding = async (message) => {
         console.error("Embedding generation failed:", error.message);
         throw error; // Re-throw for upstream handling
     }
-}
 
+}
 //  function to insert the embeddings into qdrnt databasee
 
-const StoreEmbeddings = async (embeddings, message, sender_id) => {
+export const StoreEmbeddings = async (embeddings, message, sender_id) => {
     try {
         if (!embeddings || !message || sender_id === null || sender_id === undefined) {
-            console.log(embeddings, message, sender_id)
+            // console.log(embeddings, message, sender_id)
             return { error: "An array of vector dimensions is a must to proceed any further" };
         }
         const newId = uuidv4();
 
 
-
-        await qdrntclient.upsert("messages", {
+// console.log(embeddings , message,sender_id)
+        const storedValues = await qdrntclient.upsert("message_summaries", {
             points: [{
                 id: newId,//generated unique uuid
-                vector: embeddings[0].values,
+                vector: embeddings,
                 payload: {
                     message: message, // text
                     sender_id: parseInt(sender_id), // integer
@@ -637,7 +600,7 @@ const StoreEmbeddings = async (embeddings, message, sender_id) => {
                 }
             }]
         });
-        console.log("Message stored successfully");
+        // console.log(storedValues,"Message stored successfully");
         return true;
     } catch (error) {
         console.error("Insert error:", error);
@@ -654,7 +617,7 @@ export const getMatchingMessages = async (message, sender_id, embeddings) => {
 
         try {
 
-            const results = await qdrntclient.search("messages", {
+            const results = await qdrntclient.search("message_summaries", {
                 vector: embeddings[0].values,
                 limit: 8,
                 with_payload: true,
@@ -671,6 +634,7 @@ export const getMatchingMessages = async (message, sender_id, embeddings) => {
             if (!results || results.length === 0) {
                 return [];
             }
+            console.log(results)
             const FormattedResulsts = results.map((msg) => ({
                 role: msg.payload.user_id === sender_id ? "user" : "model",
                 parts: [{ text: msg.payload.message }]

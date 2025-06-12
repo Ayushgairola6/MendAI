@@ -1,12 +1,15 @@
 import { useRef, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FaHourglassHalf } from "react-icons/fa6";
+import { PiArrowBendUpRightThin } from "react-icons/pi";
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { MdClose, MdError } from "react-icons/md";
 // dotenv.config();
 
 const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
   const [status, setStatus] = useState("idle")
-
+  const [issue, setIssue] = useState(null);
   const FirstName = useRef();
   const LastName = useRef();
   const Email = useRef();
@@ -40,7 +43,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
     try {
       setStatus("pending")
 
-      const response = await axios.post(`https://mendai.onrender.com/api/Register`, data, {
+      const response = await axios.post(`http://localhost:8080/api/Register`, data, {
         withCredentials: true
       });
       console.log(response.data);
@@ -50,7 +53,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
       }, 3000)
     } catch (error) {
       setStatus('idle');
-
+      setIssue(error?.response?.data?.message)
       throw new Error("error while creating an account!")
     }
   }
@@ -59,9 +62,15 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
 
 
     <div
-      className="h-screen flex items-center justify-center p-4"
+      className="h-screen flex items-center justify-center p-4 relative"
       style={{ backgroundColor: "black" }}
     >
+      {/* the issue slider */}
+      <div className={`absolute bottom-10 left-10 bg-gray-300 py-3 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 text-red-500 ${issue !== null ? "translate-x-0" : "-translate-x-300"} transition-all duration-700`}>
+        <span className="fixed top-1 right-1 cursor-pointer" ><MdClose onClick={()=>setIssue(null)} size={12} /></span>
+        ! {issue !== null ? issue : null}
+      </div>
+      {/*  */}
       <div
         className="w-full max-w-md rounded-xl  p-6 space-y-6 shadow-lg shadow-sky-700"
         style={{ backgroundColor: "black" }}
@@ -69,7 +78,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
         <h1 className="text-2xl font-bold text-center" style={{ color: "white" }}>
           Create an Account
         </h1>
-        <p className="text-gray-300 text-center">Start your journey with us</p>
+        <p className="text-[mediumpurple] text-center">ALICE , your friend in need !</p>
 
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
@@ -110,14 +119,17 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
           <button
             type="submit"
             onClick={handleSignup}
-            className="w-full bg-gradient-to-r from-sky-500 to-purple-500 text-white font-bold py-2 rounded-lg hover:from-purple-500 hover:to-sky-500 duration-500 ease-in-out  transition-all cursor-pointer "
+            className="w-full border border-sky-600 bg-sky-500  text-black font-semibold py-2 rounded-lg hover:bg-sky-600 duration-500 ease-in-out  transition-all cursor-pointer flex items-center justify-center gap-2 "
           >
-            Register
+            Register <PiArrowBendUpRightThin size={22} className="" />
           </button>
         ) : (
-          <div className="flex items-center justify-center my-2">
-            <div className="h-12 w-12 rounded-full animate-spin" style={{ borderTop: "4px solid white" }}></div>
-          </div>
+          <button
+            type="submit"
+            className="w-full bg-green-300 text-black border border-green-600 font-bold py-2 rounded-lg  trnsition-all ease-in-out  transition-all cursor-pointer animate-pulse duration-500 flex items-center justify-center gap-2"
+          >
+            Please wait...  <FaHourglassHalf size={16} className="animate-spin" />
+          </button>
         )}
 
         <div className="relative text-center">
@@ -146,7 +158,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
           </Link>
         </p>
       </div>
-    </div>
+    </div >
 
 
 

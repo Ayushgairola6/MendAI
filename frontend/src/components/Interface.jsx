@@ -32,7 +32,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", {
+        const response = await axios.get("http://localhost:8080/api/chat/history/data", {
           withCredentials: true,
           headers: {
             'Authorization': `Bearer ${token}`
@@ -50,8 +50,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn === false) return;
-    // https://mendai.onrender.com
-    socket.current = io("https://mendai.onrender.com", {
+    // http://localhost:8080
+    socket.current = io("http://localhost:8080", {
       auth: {
         token: token,
       },
@@ -112,10 +112,10 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   }, [messages, SendMessage]);
 
   return (
-    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white relative">
-      <div className={`${aiThinking === true ? "block" : "hidden"} absolute top-40 right-20 flex items-center justify-center rounded-xl font-bold text-black animate-pulse bg-gray-400 border border-l-purple-700 border-b-blue-700 border-r-indigo-700 border-t-sky-700 p-2  transition-all `}>
+    <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white relative md:w-[60vw] md:mx-auto ">
+      {/* <div className={`${aiThinking === true ? "block" : "hidden"} absolute top-40 right-20 flex items-center justify-center rounded-xl font-bold text-black animate-pulse bg-gray-400 border border-l-purple-700 border-b-blue-700 border-r-indigo-700 border-t-sky-700 p-2  transition-all `}>
         <span>Thinking..</span>
-      </div>
+      </div> */}
 
       <div className="flex flex-col w-full min-h-[90vh]  bg-gradient-to-br from-white/5 to-black border-gray-200 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
 
@@ -124,35 +124,48 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
           {messages !== null && messages.length > 0 && user !== null ? (
             <AnimatePresence>
               {messages.map((msg, index) => (
-                <motion.div
-                  key={`${msg.user_id}-${msg.message}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className={`flex ${msg.user_id === user.id ? "justify-start" : "justify-end"}`}
-                >
-                  <div
-                    className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-2xs  ${msg.user_id === user.id ? "bg-white/10 border-r border-purple-900  text-black" : "bg-white/15 text-black border-l border-purple-900"}`}
-                  >
-                    <p className={`text-lg font-bold ${msg.user_id === user.id ? "text-purple-500" : "text-indigo-500"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
-                    <p className={` font-semibold font-mono text-white`}>{msg.message}</p>
-
-                  </div>
+                <React.Fragment key={`${msg.user_id}-${msg.message}`}>
                   <motion.div
-                    key="typing-indicator" // Essential for AnimatePresence to work on its own
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="flex justify-start" // Typically Alice's message, so justify-start
+                    className={`flex ${msg.user_id === user.id ? "justify-start" : "justify-end"}`}
                   >
-                    {/* <TypingIndicator /> */}
+                    <div
+                      className={`max-w-xs sm:max-w-md px-4 py-2 rounded-xl text-sm shadow-2xs  ${msg.user_id === user.id ? "bg-white/10 border-r border-purple-900  text-black" : "bg-white/15 text-black border-l border-purple-900"}`}
+                    >
+                      <p className={`text-lg font-bold ${msg.user_id === user.id ? "text-purple-500" : "text-indigo-500"} mb-1`}>{msg.user_id === user.id ? msg.name : "Alice"}</p>
+                      <p className={` font-semibold font-mono text-white`}>{msg.message}</p>
+                    </div>
+                    <motion.div
+                      key="typing-indicator"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex justify-start"
+                    >
+                      {/* <TypingIndicator /> */}
+                    </motion.div>
                   </motion.div>
-                  <div className="relative  " ref={bottomRef}></div>
-
-                </motion.div>
-
+                  {/* AI Typing Indicator below the last message */}
+                  {aiThinking && index === messages.length - 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex justify-end"
+                    >
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-xl  text-gray-300 ">
+                        <span className="animate-pulse text-white font-mono">thinking<span className="animate-bounce">...</span></span>
+                      </div>
+                    </motion.div>
+                  )}
+                  {/* bottomRef after last message */}
+                  {index === messages.length - 1 && <div className="relative" ref={bottomRef}></div>}
+                </React.Fragment>
               ))}
             </AnimatePresence>
           ) : (
@@ -163,9 +176,10 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
         </div>
 
         <div className="py-2 px-1 border-t border-gray-800 bg-gradient-to-br from-black to-white/10 flex items-center justify-between gap-2">
-          <input
+          <textarea
             ref={InputRef}
             type="text"
+            rows="3"
             placeholder="Type your message..."
             className="flex-1 ring-gray-400 ring-1 text-white font-sans  px-4 py-3 rounded-lg focus:outline-none focus:ring-1 focus:ring-white-500 text-sm transition-all duration-200 shadow-inner"
           />

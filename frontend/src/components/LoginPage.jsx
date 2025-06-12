@@ -1,5 +1,5 @@
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Links, useNavigate } from "react-router-dom";
 import React, { useEffect, useRef, useState } from 'react';
 import axios from "axios";
 
@@ -31,7 +31,7 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
 
     try {
       setStatus("pending");
-      const response = await axios.post(`https://mendai.onrender.com/api/Login`, data, { withCredentials: true });
+      const response = await axios.post(`http://localhost:8080/api/Login`, data, { withCredentials: true });
       localStorage.setItem("auth_token", response.data.token);
       setIsLoggedIn(true);
       setStatus("success");
@@ -46,8 +46,8 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center p-4" style={{ backgroundColor: "black" }}>
-      <div className="w-full max-w-md rounded-xl  p-6 space-y-6 bg-black shadow-lg shadow-sky-700">
+    <div className="h-screen flex items-center justify-center p-4  bg-black" >
+      <div className="w-full max-w-md rounded-xl  p-6 space-y-6 bg-gradient-to-br from-black to-white/10 shadow-sm shadow-sky-700">
         <section className="">
           <h1 className="text-3xl font-bold text-white text-center">Welcome Back</h1>
           <p className="text-gray-300 text-center">Sign in to continue where you left off </p>
@@ -72,9 +72,9 @@ const Login = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
         </div>
 
         <div className="text-right">
-          <a href="#" className="text-sm hover:underline" style={{ color: "white" }}>
+          <Link to="/ResetPassword" className="text-sm hover:underline" style={{ color: "white" }}>
             Forgot password?
-          </a>
+          </Link>
         </div>
 
         {status === "idle" ? (

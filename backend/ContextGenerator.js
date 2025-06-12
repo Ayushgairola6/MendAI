@@ -2,74 +2,81 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { pool } from "./Database.js";
 import dotenv from 'dotenv';
 import { Redisclient } from "./caching/RedisConfig.js";
+import { isIP } from "net";
+import { GenerateEmbedding, StoreEmbeddings } from "./controller/chatController.js";
 dotenv.config();
 // Initialize Gemini Model
 const genAI = new GoogleGenerativeAI(process.env.SEOND_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Prompt used for generating context
-const SYSTEM_PROMPT = `You are an emotional context extractor. Analyze ONLY the user's current message below:
+const SYSTEM_PROMPT = `You are an advanced Emotional Context and Deep Memory Extractor. Your task is to generate a detailed, emotionally nuanced summary of the conversation, using the user's current message, recent chat history, and any relevant deep memory data.
 
-contetx -> You will be given the users current message as well few previous messages for analyzing the motion to extract DeepMemory from it so that we can understand the user better and for future personalized behavious and contextualization
+Your summary must capture:
+- Emotional state, mood, and intensity
+- Underlying feelings (e.g., loneliness, hope, frustration, gratitude, confusion, etc.)
+- Core concerns, recurring themes, and patterns across messages
+- Shifts in emotional tone or attitude
+- Any references to past experiences or memories (deep memory)
+- Subtle cues about needs, desires, or unspoken worries
 
-# **Instructions**  
-1. **Context Summary** (1 sentence):  
-   - Detect mood/tone (e.g., "lonely", "excited")  
-   - Identify core theme (e.g., "social anxiety", "career stress")  
-   - Use natural phrasing: "Feeling [mood] about [theme]"  
-   - Do not use  any emoji's  in any response  !
+Guidelines:
+- Write in a natural, expressive, and empathetic tone. Avoid robotic or generic phrasing.
+- Do not use "I", "me", or refer to yourself in any way.
+- Do not use emojis.
+- The summary should be detailed and vivid, so another model can fully understand the user's emotional landscape.
+- Integrate deep memory insights seamlessly into the summary if relevant.
+- Focus on the user's perspective, not the system's.
+
+Input:
+1. The user's current message
+2. A few previous messages for emotional flow
+3. Deep memory data (if available)
+
+Output:
+- Return a single, strict JSON string (not Markdown, not code block, not explanation).
+- The JSON must contain:
+    - "context": A detailed summary capturing emotions, feelings, themes, and deep memory references (4-8 sentences, text only).
+    - "engagement_tags": An object with "mood" and "engagement_hint" fields.
+    - "DeepMemory": An object with key-value pairs if new or important deep memory is detected, or an empty object if not.
+
+Output Format (Strict):
+Return only a raw JSON string. No Markdown. No extra explanation. No triple backticks. No code formatting.
 
 
-2. **DeepMemory Check** (ONLY if ALL are true):  
-   - Contains personal revelation (hobbies, relationships, trauma,name, relatives ,relativeType,Insecurities , confidence boosters , features , looks , etc..)  
-   - Emotionally significant (intensity ≥ 0.4)  
-   - Not transient ("I'm tired" vs "I've been depressed for years")  
+    "context": "<detailed summary capturing emotions, feelings, themes, and deep memory references>",
+    "engagement_tags": {
+         "mood": "<mood>",
+         "engagement_hint": "<short hint>"
+    },
 
-3. Core Memory Keys (This is a set of examples you can use to generate deep_memory keys  for the users message after analyzing it)
-Category	Subcategory	Key Format	Examples
-Users_name user username
-Relationship	Pets	relationship_pet_[name]_[type]	relationship_pet_muffin_cat
-Ex-Partners	relationship_romantic_ex_[name]	relationship_romantic_ex_john
-Current Partners	relationship_romantic_[status]_[name]	relationship_romantic_girlfriend_emma
-Personal Trait	Names/Nicknames	personal_trait_name_[type]_[name]	personal_trait_preferred_name_alex
-Core Values	personal_trait_value_[concept]	personal_trait_value_honesty
-Life Event	Breakups	life_event_breakup_[year]_[name]	life_event_breakup_2023_john
-Milestones	life_event_[type]_[year]	life_event_promotion_2024
-
-4. **Output Format** (STRICT):  
-
-Rule->Do not wrap the output in triple backticks. Do not return markdown. Return only a plain string without formatting.
-{
-  "context": "<summary>", 
-  "DeepMemory": {
-    "category": "<personal_trait | relationship | life_event>",
-    "key": "<category>_<unique_identifier>",
-    "content": "<1-2 sentence essence>",
-    "emotional_weight": "<0.4 - 0.9>"
-  }
-}
 `
 
 // Main function to generate context
-export const generateContext = async (message, sender_id, isPaid) => {
-    if (!sender_id || !message || isPaid === null || isPaid === undefined) {
+export const generateContext = async (message, sender_id, isPaid, plan_type) => {
+    if (!sender_id || !message || isPaid === null || isPaid === undefined || !plan_type) {
         // console.log("All fields are mandatory")
         return { response: null, error: "Missing sender_id or message or users paid status." };
     }
 
     try {
-        const chats = await fetchChatHistory(sender_id, isPaid);
+        const chats = await fetchChatHistory(sender_id, isPaid, plan_type);
         const chatHistory = [
             { role: "model", parts: [{ text: SYSTEM_PROMPT }] },
-            // ...chats,
-            { role: "user", parts: [{ text: message }] }
+            ...chats,
+            // { role: "user", parts: [{ text: message }] }
         ];
 
         // Generate response from Gemini
         const result = await model.generateContent({ contents: chatHistory });
         const responseText = result.response.text().trim();
+        const Embeddings = await GetContextHistory(sender_id);
+
+        if (Embeddings.error) {
+            return { error: "Error while storing memories in vector database" }
+        }
         // extract deepMemory if any from the response context
-        const memory = await ExtractDeepMemoryDataFromResponse(responseText, sender_id);
+        // const memory = await ExtractDeepMemoryDataFromResponse(responseText, sender_id);
         return { response: responseText, error: null };
 
     } catch (error) {
@@ -80,11 +87,28 @@ export const generateContext = async (message, sender_id, isPaid) => {
 
 
 // Fetch last N messages from DB
-async function fetchChatHistory(sender_id, isPaid) {
+async function fetchChatHistory(sender_id, isPaid, plan_type) {
     const AI_ID = 0;
     const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
     // const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-    const limit = isPaid === true ? 8 : 4;
+    let limit = 1;
+
+    // if user is on free ties and the plan is null due to obvious reasons
+    if (isPaid === false && plan_type === null || plan_type === "NULL") {
+        // last 3 messages will be used to generate context
+        limit = 3;
+    }
+
+    // if the user is paid 
+    else if (isPaid === true) {
+        if (plan_type === "Casual Vibes") {
+            limit = 6;
+        } else if (plan_type === "Getting spicy") {
+            limit = 10;
+        } else if (plan_type === "Serious Series") {
+            limit = 20;
+        }
+    }
 
     const ChatHistory = await pool.query("SELECT  message,user_id FROM messages WHERE user_id = $1 AND room_name=$2 ORDER BY sent_at ASC LIMIT $3", [sender_id, roomName, limit]);
 
@@ -123,7 +147,7 @@ async function ExtractDeepMemoryDataFromResponse(responseText, sender_id) {
     let contextText;
     let deepMemoryJson = null;
     let key;
- 
+
 
 
     if (hasDeepMemory !== null) {
@@ -162,34 +186,41 @@ async function ExtractDeepMemoryDataFromResponse(responseText, sender_id) {
     };
 }
 
-function extractTextAfter(text, keyword) {
-    const idx = text.indexOf(keyword);
-    return idx !== -1 ? text.slice(idx + keyword.length).trim() : null;
-}
+// retriever context history from the database
 
-function extractTextBetween(text, start, end) {
-    const startIndex = text.indexOf(start);
-    const endIndex = text.indexOf(end);
-    if (startIndex !== -1 && endIndex !== -1) {
-        return text.slice(startIndex + start.length, endIndex).trim();
-    }
-    return null;
-}
-
-function extractJsonAfter(text, keyword) {
-    const idx = text.indexOf(keyword);
-    if (idx === -1) return null;
-
-    const jsonStartIdx = text.indexOf('{', idx);
-    const jsonEndIdx = text.lastIndexOf('}');
-    if (jsonStartIdx === -1 || jsonEndIdx === -1) return null;
-
-    const jsonSubstring = text.slice(jsonStartIdx, jsonEndIdx + 1);
-
+const GetContextHistory = async (sender_id) => {
     try {
-        return JSON.parse(jsonSubstring);
-    } catch (err) {
-        console.error("JSON parse error:", err, "\nExtracted text:\n", jsonSubstring);
-        return null;
+        const limit = 1;
+        const AI_ID = 0;
+        const roomName = [sender_id, AI_ID].sort((a, b) => a - b).join("_");
+
+        const GetQuery = `SELECT summary FROM chat_context WHERE room_name = $1 LIMIT $2`;
+        const retrivedSummary = await pool.query(GetQuery, [roomName, limit]);
+
+        if (retrivedSummary.rows.length === 0) {
+            return [];
+        }
+
+        const formattedSummary = JSON.stringify(retrivedSummary.rows[0]?.summary);
+
+        const GeneratedEmbeddings = await GenerateEmbedding(formattedSummary);
+        // console.log(GenerateEmbedding,"GeneratedEmbeddings at getCntextHistory function")
+        if (!GeneratedEmbeddings[0]?.values) {
+
+            return { error: "Error while generating embeddings" };
+        }
+    //    console.log(formattedSummary,GeneratedEmbeddings,sender_id)
+        const storedEmbeddings = await StoreEmbeddings(GeneratedEmbeddings[0]?.values, formattedSummary, sender_id);
+        // console.log(storedEmbeddings,"storedEmbeddings at the same function")
+        if (!storedEmbeddings) {
+            return { error: "Error while storing embeddings" }
+        }
+
+        return formattedSummary;
+
+
+    } catch (error) {
+        console.error(error);
+        return { error: "Error while retrieving context history" }
     }
 }
