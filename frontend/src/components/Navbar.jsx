@@ -11,58 +11,65 @@ import Sidebar from './SideBar';
 import { MdDownload } from 'react-icons/md';
 import { motion } from 'framer-motion';
 import AppModal from './DownloadAppModal';
+import { FaUserAstronaut } from 'react-icons/fa6';
 const Navbar = ({ color, setColor, user, isLoggedIn, isSeen, setSeen }) => {
 
   const [visible, setVisible] = useState(false);
   const [showSocials, setShowSocials] = useState(false);
   const [theme, setTheme] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-
+  const [currTab, setCurrTab] = useState("Chat")
   return <>
 
-    <div className="bg-black px-6  py-2 text-white flex items-center justify-between sticky top-0 left-0 w-full z-999 font-bold text-sm ">
+    <div onClick={() => {
+      visible === true ? setVisible(false) : null;
+    }} className="bg-black px-6  py-2 text-white flex items-center justify-between sticky top-0 left-0 w-full z-999 font-mono text-sm ">
 
       <Sidebar isVisible={showSidebar} setIsVisible={setShowSidebar} isLoggedIn={isLoggedIn} />
-      <Link to="/" className='font-sams text-xl'>ALICE</Link>
-      <motion.ul whileTap={{ scale: 1.18 }} onClick={() => setShowSidebar(!showSidebar)} className='block md:hidden lg:hidden cursor-pointer'><RiMenu4Fill size={30} /></motion.ul>
+      <Link to="/" className='font-mono text-xl '>ALICE</Link>
+      {/* menu button and user image */}
+      <motion.ul whileTap={{ scale: 1.18 }} className='flex items-center justify-center gap-3 flex-row-reverse md:hidden lg:hidden cursor-pointer '><RiMenu4Fill onClick={() => setShowSidebar(!showSidebar)} size={!user ? 24 : 42} />
+        {isLoggedIn === true ? <Link to="/DashBoard" className='h-4/5 w-4/5  rounded-lg '> {user?.image ? <img className='border-0 rounded-lg h-10 w-10  ' src={user ? user.image : ""} alt="/" /> : <FaUserAstronaut size={22} />}</Link> : null}
 
-      <div className='hidden md:flex lg:flex items-center justify-evenly gap-3 p-1'>
+      </motion.ul>
 
-        {isLoggedIn === true ? <Link to="/DashBoard" className='h-full w-full border rounded-full border-lime-600'> <img className='border-0 rounded-full h-10 w-10  ' src={user ? user.image : ""} alt="/" /></Link> : null}
-        <Link className='w-full hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  flex items-center justify-center gap-2  py-2' to="/">Chat </Link>
-        <Link className='w-full hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  flex items-center justify-center gap-2  py-2' to="/Plans">Plans </Link>
-        {isLoggedIn === true ? <Link onClick={() => {
+      {/* large screen navlinks */}
+      <div className='hidden md:flex lg:flex items-center justify-evenly gap-3 p-1 relative'>
+
+
+
+        {isLoggedIn === true ? <Link to="/DashBoard" className='h-full w-full  rounded-lg '> {user?.image ? <img className='border-0 rounded-lg h-10 w-10  ' src={user ? user.image : ""} alt="/" /> : <FaUserAstronaut size={22} />}</Link> : null}
+
+        <Link onClick={() => setCurrTab("Chat")} className={`w-full  rounded-xl  px-3  transition-all duration-500  flex items-center justify-center gap-2  py-2 ${currTab === "Chat" ? "bg-white text-black" : "bg-white/5 text-white "}`} to="/">Chat </Link
+        >
+        <Link onClick={() => setCurrTab("Plans")} className={`w-full  rounded-xl  px-3  transition-all duration-500  flex items-center justify-center gap-2  py-2  ${currTab === "Plans" ? "bg-white text-black" : "bg-white/5 text-white "}`} to="/Plans">Plans </Link>
+
+        {isLoggedIn === true ? <ul onClick={() => {
           if (showSocials === true) {
             setShowSocials(false)
           }
           setVisible(!visible)
-        }} className='relative   hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  flex items-center justify-center gap-2  py-2'>Account
-        </Link>
+          setCurrTab("Account")
+        }} className={`relative   rounded-xl  px-3  transition-all duration-500  flex items-center justify-center gap-2  py-2  ${currTab === "Account" ? "bg-white text-black" : "bg-white/5 text-white "} cursor-pointer`}>Account
+        </ul>
+
           : (<>
             <Link className='w-full hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  flex items-center justify-center gap-2  py-2' to="/Login">Login </Link>
+
             <Link to='/Register' className='w-full hover:bg-white rounded-xl transition-all duration-500 px-3 hover:text-black  flex items-center justify-center gap-2  py-2'>Register</Link></>)}
+
         <EditModal setVisible={setVisible} visible={visible} />
         <Link onClick={() => {
           if (visible === true) {
             setVisible(false)
           }
           setShowSocials(!showSocials)
-        }} className='relative flex items-center justify-center gap-2 hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  py-2'>Socials</Link>
+          setCurrTab("Socials")
+        }} className={`relative flex items-center justify-center gap-2  ${currTab === "Socials" ? "bg-white text-black" : "bg-white/5 text-white "} hover:bg-white rounded-xl  px-3 hover:text-black transition-all duration-500  py-2`}>Socials</Link>
         {/* <Link to="/Plans">Premium</Link> */}
         <Socials showSocials={showSocials} />
         {/* toggle theme */}
-        <section onClick={(e) => {
-          setTheme(!theme);
-          if (e.target.innerText === "Light" || e.target.innerText === "Dark") {
-            setColor(e.target.innerText)
-          }
-        }}>
-          {/* <FaLightbulb className='relative' size={20} />
-          {theme === true ? <div className={`absolute bg-black top-20 right-15 p-2  rounded-lg`} >
-            <ul className='flex items-center justify-center mt-1 gap-2' >Dark <FaMoon /></ul>
-            <ul className='flex items-center justify-center mt-1 gap-2'>Light <FaSun /></ul>
-          </div> : null} */}
-        </section>
+
 
       </div>
 

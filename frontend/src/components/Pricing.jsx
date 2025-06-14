@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import {IoClose} from 'react-icons/io5'
+import { IoClose } from 'react-icons/io5'
 const Pricing = () => {
     const [paymentStatus, setPaymentStatus] = useState("idle");
+    const [currHover, setCurrHover] = useState(null);
+
     const plans = [
         {
             name: "Lil Vibe",
@@ -23,7 +25,7 @@ const Pricing = () => {
             features: ["Remembers your hot takes", "Mood-checks on point", "Tailored advice with ✨ energy"],
         },
         {
-            name: "Main Character",
+            name: "you are Him",
             validity: "90",
             planType: "Serious Series",
             Internationalprice: 45,
@@ -73,9 +75,9 @@ const Pricing = () => {
                         setPaymentStatus("success");
                     } else {
                         setPaymentStatus("failed")
-                        setTimeout(()=>{
+                        setTimeout(() => {
                             setPaymentStatus("idle");
-                        },2000)
+                        }, 2000)
                     }
                 },
                 // prefill: {
@@ -100,43 +102,46 @@ const Pricing = () => {
         <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 relative">
             {paymentStatus !== "idle" ? (
                 <div
-                    className={`absolute top-5 right-5 border py-6 px-12 rounded-xl font-bold ${
-                        paymentStatus === "pending"
-                            ? "text-green-700 bg-green-200 border-green-700"
-                            : paymentStatus === "success"
+                    className={`absolute top-5 right-5 border py-6 px-12 rounded-xl font-bold ${paymentStatus === "pending"
+                        ? "text-green-700 bg-green-200 border-green-700"
+                        : paymentStatus === "success"
                             ? "text-sky-700 bg-sky-200 border-sky-700"
                             : "text-red-700 bg-red-200 border-red-700"
-                    }`}
+                        }`}
                 >
-                    <IoClose onClick={()=>setPaymentStatus("idle")}  className='absolute top-2 right-2 cursor-pointer hover:bg-red-600 hover:text-white transition-all duration-300 rounded-xl'/>
+                    <IoClose onClick={() => setPaymentStatus("idle")} className='absolute top-2 right-2 cursor-pointer hover:bg-red-600 hover:text-white transition-all duration-300 rounded-xl' />
                     {paymentStatus === "pending"
                         ? "Payment pending"
                         : paymentStatus === "success"
-                        ? "Payment Verified"
-                        : "Payment unsuccessfull"}
+                            ? "Payment Verified"
+                            : "Payment unsuccessfull"}
                 </div>
             ) : null}
             <header className="mb-12 text-center">
                 <h1 className="text-4xl font-bold text-white tracking-tight">Your Vibe, Your Plan</h1>
-                <p className="text-base text-lime-400 mt-4">Choose a plan that feels right. Stay chill, stay connected.</p>
+                <p className="text-base text-purple-400 mt-4">Choose a plan that feels right. Stay chill, stay connected.</p>
             </header>
 
-            <div className="w-full max-w-6xl flex flex-col md:flex-row gap-6 justify-center items-start px-4">
+            <div className="w-full grid grid-cols-1 gap-4 px-4 py-4 md:grid-cols-2 lg:grid-cols-3">
                 {plans.map((plan, i) => (
-                    <div
+                    <div onMouseOver={() => setCurrHover(plan.name)}
+                        onMouseLeave={() => setCurrHover(null)}
                         key={i}
-                        className="flex-1 bg-black text-white rounded-xl border border-gray-200 p-8 transition-colors duration-300 ease-in-out w-full"
+                        className={`flex-1 bg-gradient-to-r from-white/10 to-black text-white rounded-xl border border-gray-700
+                        border-l-gray-700 cursor-pointer
+                            top-right p-8 transition-colors duration-300 ease-in-out w-full relative ${currHover===plan.name?" ":""} transition-all duration-700`}
                     >
+                        {currHover===plan.name?<div className="absolute ">1</div>:null}
                         <div className="flex justify-between items-center">
-                            <span className="bg-gradient-to-r from-lime-400 to-teal-400 text-black px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
+                            <span className="bg-white text-black px-2 py-1 rounded-full text-xs font-semibold uppercase tracking-wide">
                                 {plan.name}
                             </span>
-                            <p className='text-xs text-gray-300'>{plan.planType}</p>
+                            <p className='text-xs text-purple-400'>{plan.planType}</p>
                             <span className="text-sm text-gray-400">{plan.validity}days</span>
                         </div>
                         <div className="mt-4">
-                            <p className="text-2xl font-bold text-teal-500">${plan.Internationalprice}</p>
-                            <p className="text-2xl font-bold text-lime-500">₹{plan.IndianPrice}</p>
+                            <p className="text-2xl font-bold text-indigo-500">${plan.Internationalprice}</p>
+                            <p className="text-2xl font-bold text-purple-500">₹{plan.IndianPrice}</p>
                             <p className="mt-2 text-sm text-gray-300">{plan.description}</p>
                         </div>
                         <ul className="mt-6 space-y-2">
@@ -152,13 +157,13 @@ const Pricing = () => {
                         <div className="mt-8 grid grid-cols-2 gap-2">
                             <button
                                 onClick={() => handlePayment(plan.IndianPrice, "INR", plan.validity, plan.planType)}
-                                className="bg-lime-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-lime-600 transition-colors text-sm"
+                                className="bg-purple-500 text-gray-200 font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-purple-600 transition-colors text-sm"
                             >
                                 Pay ₹{plan.IndianPrice}
                             </button>
                             <button
                                 onClick={() => handlePayment(plan.Internationalprice, "USD", plan.validity, plan.planType)}
-                                className="bg-teal-500 text-black font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-teal-600 transition-colors text-sm"
+                                className="bg-indigo-500 text-gray-200 font-bold cursor-pointer py-2 px-4 rounded-full hover:bg-indigo-600 transition-colors text-sm"
                             >
                                 Pay ${plan.Internationalprice}
                             </button>

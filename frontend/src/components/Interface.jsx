@@ -32,7 +32,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
     const handleChatHistory = async () => {
       try {
-        const response = await axios.get("http://localhost:8080/api/chat/history/data", {
+        const response = await axios.get("https://mendai.onrender.com/api/chat/history/data", {
           withCredentials: true,
           headers: {
             'Authorization': `Bearer ${token}`
@@ -50,8 +50,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
     if (isLoggedIn === false) return;
-    // http://localhost:8080
-    socket.current = io("http://localhost:8080", {
+    // https://mendai.onrender.com
+    socket.current = io("https://mendai.onrender.com", {
       auth: {
         token: token,
       },
@@ -113,10 +113,45 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
 
   return (
     <form onSubmit={(e) => SendMessage(e)} className="h-screen max-h-screen flex flex-col items-center justify-evenly p-2 bg-black text-white relative md:w-[60vw] md:mx-auto ">
-      {/* <div className={`${aiThinking === true ? "block" : "hidden"} absolute top-40 right-20 flex items-center justify-center rounded-xl font-bold text-black animate-pulse bg-gray-400 border border-l-purple-700 border-b-blue-700 border-r-indigo-700 border-t-sky-700 p-2  transition-all `}>
-        <span>Thinking..</span>
-      </div> */}
+     {/* the glowing balls */}
+<div class="
+hidden md:block
+  fixed left-0 top-10  
+  h-[400px] w-[200px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(124,58,237,0.7),_rgba(124,58,237,0)_70%)]  
+  blur-[90px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[2]  
+"></div>
 
+            {/* <!-- Electric Indigo (Center) --> */}
+            <div class=" hidden md:block
+  fixed left-1 bottom-3  
+  h-[400px] w-[300px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(99,102,241,0.7),_rgba(99,102,241,0)_70%)]  
+  blur-[90px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[1] 
+  animate-pulse 
+"></div>
+
+            {/* <!-- Sky Blue (Right) --> */}
+            <div class=" hidden md:block
+  fixed right-0 top-1/3  
+  h-[400px] w-[300px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(56,182,240,0.6),_rgba(56,182,240,0)_70%)]  
+  blur-[100px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[2]  
+"></div>
+
+{/*  */}
       <div className="flex flex-col w-full min-h-[90vh]  bg-gradient-to-br from-white/5 to-black border-gray-200 rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(255,255,255,0.1)]">
 
 
@@ -169,8 +204,8 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
               ))}
             </AnimatePresence>
           ) : (
-            <div className="flex items-center justify-center h-full  text-gray-400 font-sans text-sm">
-              Please! Be respectful ,and enjoy your personal time!
+            <div className="flex items-center justify-center h-full  text-[mediumpurple] font-mono text-sm">
+              Please! Be respectful ,and enjoy your personal space!
             </div>
           )}
         </div>
@@ -181,7 +216,7 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
             type="text"
             rows="3"
             placeholder="Type your message..."
-            className="flex-1 ring-gray-400 ring-1 text-white font-sans  px-4 py-3 rounded-lg focus:outline-none focus:ring-1 focus:ring-white-500 text-sm transition-all duration-200 shadow-inner"
+            className="flex-1 ring-gray-400 ring-1 text-white font-sans  px-4 py-3 rounded-lg focus:outline-none focus:ring-1 focus:ring-white-500 text-sm transition-all duration-200 shadow-inner font-mono"
           />
 
           <div className="flex items-center justify-center gap-1 ">
@@ -205,12 +240,13 @@ const InterFace = ({ user, isLoggedIn, setIsLoggedIn, color }) => {
               }
             </ul> */}
 
-            {aiThinking === false ? <motion.button
+             <motion.button
+             disabled={aiThinking===true}
               whileTap={{ scale: 0.9 }}
-              className="ml-3 bg-gradient-to-br from-[#77A1D3] via-[#79CBCA] to-[#E684AE] text-black font-bold px-3 py-3 md:py-4 md:px-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all "
+              className="ml-3 bg-gradient-to-br from-[#77A1D3] via-[#79CBCA] to-[#E684AE] text-black font-bold px-3 py-3 md:py-4 md:px-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all font-mono font-bold"
             >
               Send
-            </motion.button> : <button className="ml-3 bg-gradient-to-r from-white/15  to-white/5 border  text-white font-bold px-3 py-3 md:py-4 md:px-4 cursor-pointer rounded-xl shadow-lg text-sm hover:brightness-110 transition-all ">Send</button>}
+            </motion.button> 
           </div>
 
         </div>

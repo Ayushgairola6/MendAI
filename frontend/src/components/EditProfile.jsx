@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import Navbar from './Navbar';
 import axios from 'axios';
-import { FaHeart, FaRegEdit } from "react-icons/fa";
+import { FaHeart, FaRegEdit, FaUser } from "react-icons/fa";
+import { motion } from 'framer-motion'
 const EditProfile = ({ user, handelAccountDetails }) => {
 
     const DateRef = useRef();
@@ -17,7 +18,7 @@ const EditProfile = ({ user, handelAccountDetails }) => {
         form.append("image", Image)
         try {
             setUploading("pending");
-            const response = await axios.post("http://localhost:8080/api/update/profile", form, {
+            const response = await axios.post("https://mendai.onrender.com/api/update/profile", form, {
                 withCredentials: true,
                 headers: {
                     "Content-Type": "multipart/form-data",
@@ -37,29 +38,30 @@ const EditProfile = ({ user, handelAccountDetails }) => {
 
 
     return (<>
-        <div style={{ backgroundColor: "black", borderTop: "1px solid lightgray", color: "white" }} className="h-screen ">
+        <div style={{  borderTop: "1px solid lightgray", color: "white" }} className="h-screen font-mono bg-black">
             {/* Top profile data part */}
             <div className="flex items-center justify-start gap-10 p-2 relative">
-                <ul onClick={()=>{
+                <motion.ul whileTap={{ scale: 1.07 }} onClick={() => {
                     ImageRef.current.click()
-                }} className="absolute right-5 top-5 p-2 rounded-full bg-white/25 cursor-pointer hover:scale-110 transition-all duration-300"><FaRegEdit /></ul>
+                }} className="absolute right-2 top-2 p-2 rounded-full bg-white/10 shadow-xl shadow-purple-600/20 cursor-pointer hover:scale-110 transition-all duration-300">
+                <FaRegEdit color="mediumpurple" /></motion.ul>
 
                 <div className="flex flex-col items-center justify-center gap-3">
                     <section
                         onMouseEnter={() => setVisible(true)}
                         onMouseLeave={() => setVisible(false)}
-                        className="relative h-30 w-30 rounded-full border border-white cursor-pointer"
+                        className="relative h-25 w-25 rounded-xl border border-white cursor-pointer"
                     >
                         {/* Image Upload Loader */}
                         {uploading === "pending" && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
-                                <div className="h-10 w-10 border-4 border-t-white border-gray-600 rounded-full animate-spin"></div>
+                                <div className="h-10 w-10 border-4 border-t-white border-purple-600 rounded-full animate-spin"></div>
                             </div>
                         )}
 
                         {/* Profile Image */}
                         <img
-                            className="rounded-full h-full w-full"
+                            className="rounded-xl h-full w-full"
                             src={user ? user.image : "/"}
                             alt={user ? user.name : "No image"}
                         />
@@ -68,9 +70,9 @@ const EditProfile = ({ user, handelAccountDetails }) => {
 
                         <div
                             onClick={() => ImageRef.current.click()}
-                            className={`${visible ? "opacity-100" : "opacity-0"} transition-all absolute top-0 left-0 flex rounded-full h-full w-full bg-black/30`}
+                            className={`${visible ? "opacity-100" : "opacity-0"} transition-all absolute top-0 left-0 flex rounded-lg h-full w-full bg-black/30`}
                         >
-                            <ul className='m-auto bg-white/70 text-black font-bold p-2 rounded-full'>
+                            <ul className='m-auto bg-white/70 text-black font-bold p-2 rounded-lg'>
                                 Add
                             </ul>
                         </div>
@@ -91,17 +93,35 @@ const EditProfile = ({ user, handelAccountDetails }) => {
                     />
                 </div>
 
-                <div className="flex flex-col items-center justify-center gap-3">
-                    <ul className="text-xl font-semibold flex items-center justify-center gap-2 text-gray-300">
-                        {/* <FaHeart color="red" /> */}
+                <div className="flex flex-col items-start justify-start gap-1">
+                    <ul className="text-md font-semibold flex items-center justify-center gap-1 text-gray-300">
+                        <FaUser color="mediumpurple" />
                         {user ? user.name : "Not found"}
                     </ul>
-                    <ul className="text-sm font-semibold">{user ? user.email : "Not found"}</ul>
+                    <ul className="text-xs font-semibold text-[mediumpurple]">{user ? user.email : "Not found"}</ul>
                 </div>
             </div>
 
-            <div className="h-screen text-center flex items-center justify-center text-xl font-sans ">
-                New features and options will be live soon!
+            <div className=" text-center py-4 px-2 text-xs md:text-md">
+                <h1 className="text-sm">Usage Overview (Analytics will be live soon) </h1>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+                    <div className="bg-white/10 py-3 rounded-lg flex items-center justify-center gap-2">
+                        <ul className="text-[mediumpurple]">Messages Sent-</ul>
+                        <span>0</span>
+                    </div>
+                    <div className="bg-white/10 py-3 rounded-lg">
+                        <ul className="text-[mediumpurple]">Last Login</ul>
+                        <span>{ new Date().toISOString().split('T')[0]}</span>
+                    </div>
+                    <div className="bg-white/10 py-3 rounded-lg">
+                        <ul className="text-[mediumpurple] line-clamp-2">About you</ul>
+                        <span>Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptates, similique.</span>
+                    </div>
+                    <div className="bg-white/10 py-3 rounded-lg">
+                        <ul className="text-[mediumpurple]">Interests</ul>
+                        <span>Lorem ipsum dolor sit amet consectetur adipisicing elit. Voluptates, similique.</span>
+                    </div>
+                </div>
             </div>
         </div>
 

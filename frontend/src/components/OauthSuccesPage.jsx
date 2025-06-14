@@ -15,7 +15,7 @@ export default function OAuthSuccess({isLoggedIn,setIsLoggedIn,handelAccountDeta
 
         const Verify = async ()=>{
           try{
-          const response = await axios.get("http://localhost:8080/api/verify/account",{withCredentials:true,headers:{
+          const response = await axios.get("https://mendai.onrender.com/api/verify/account",{withCredentials:true,headers:{
             'Authorization':`Bearer ${token}`
           }});
           if (response.data.message === "authorized") {

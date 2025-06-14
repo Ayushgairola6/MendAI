@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { FaGoogle } from "react-icons/fa";
 import { FaHourglassHalf } from "react-icons/fa6";
 import { PiArrowBendUpRightThin } from "react-icons/pi";
 import axios from 'axios';
@@ -43,7 +44,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
     try {
       setStatus("pending")
 
-      const response = await axios.post(`http://localhost:8080/api/Register`, data, {
+      const response = await axios.post(`https://mendai.onrender.com/api/Register`, data, {
         withCredentials: true
       });
       console.log(response.data);
@@ -65,20 +66,59 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
       className="h-screen flex items-center justify-center p-4 relative"
       style={{ backgroundColor: "black" }}
     >
+      {/* the gradient patches */}
+      {/* <!-- Deep Purple (Left) --> */}
+      <div class="
+  fixed left-0 top-10  
+  h-[400px] w-[200px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(124,58,237,0.7),_rgba(124,58,237,0)_70%)]  
+  blur-[90px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[2]  
+"></div>
+
+      {/* <!-- Electric Indigo (Center) --> */}
+      <div class="
+  fixed right-90 top-3  
+  h-[400px] w-[300px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(99,102,241,0.7),_rgba(99,102,241,0)_70%)]  
+  blur-[90px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[1] 
+  animate-pulse 
+"></div>
+
+      {/* <!-- Sky Blue (Right) --> */}
+      <div class=" hidden md:block
+  fixed right-0 top-1/3  
+  h-[400px] w-[300px]  
+  opacity-40  
+  bg-[radial-gradient(circle_at_center,_rgba(56,182,240,0.6),_rgba(56,182,240,0)_70%)]  
+  blur-[100px]  
+  rounded-full  
+  mix-blend-mode-lighten  
+  z-[2]  
+"></div>
+
+      {/*  */}
       {/* the issue slider */}
       <div className={`absolute bottom-10 left-10 bg-gray-300 py-3 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 text-red-500 ${issue !== null ? "translate-x-0" : "-translate-x-300"} transition-all duration-700`}>
-        <span className="fixed top-1 right-1 cursor-pointer" ><MdClose onClick={()=>setIssue(null)} size={12} /></span>
+        <span className="fixed top-1 right-1 cursor-pointer" ><MdClose onClick={() => setIssue(null)} size={12} /></span>
         ! {issue !== null ? issue : null}
       </div>
       {/*  */}
       <div
-        className="w-full max-w-md rounded-xl  p-6 space-y-6 shadow-lg shadow-sky-700"
-        style={{ backgroundColor: "black" }}
+        className="w-full max-w-md rounded-xl bg-gradient-to-br from-black to-white/10  p-6 space-y-6 shadow-xl shadow-white/5"
+
       >
         <h1 className="text-2xl font-bold text-center" style={{ color: "white" }}>
-          Create an Account
+          Welcome to your personal space
         </h1>
-        <p className="text-[mediumpurple] text-center">ALICE , your friend in need !</p>
+        <p className="text-[mediumpurple] text-center font-mono"> Where you will never be unheard !</p>
 
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
@@ -119,7 +159,14 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
           <button
             type="submit"
             onClick={handleSignup}
-            className="w-full border border-sky-600 bg-sky-500  text-black font-semibold py-2 rounded-lg hover:bg-sky-600 duration-500 ease-in-out  transition-all cursor-pointer flex items-center justify-center gap-2 "
+            className="bg-indigo-600 hover:bg-indigo-700  
+  text-white  
+   py-2  
+  rounded-lg  
+  font-medium  
+  transition-all  
+  shadow-lg shadow-indigo-500/20  
+  hover:shadow-indigo-500/40   w-full flex items-center justify-center gap-2 font-mono"
           >
             Register <PiArrowBendUpRightThin size={22} className="" />
           </button>
@@ -136,7 +183,7 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t" style={{ borderColor: "white" }}></div>
           </div>
-          <div className="relative bg-black px-2 text-sm" style={{ color: "white" }}>
+          <div className="relative bg-black  px-2 text-sm" style={{ color: "gray" }}>
             OR
           </div>
         </div>
@@ -144,16 +191,16 @@ const SignupPage = ({ isLoggedIn, setIsLoggedIn, handleGoogleLogin }) => {
         <div className="flex flex-col gap-3">
           <button
             onClick={handleGoogleLogin}
-            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all duration-300"
+            className="w-full border py-2 rounded-lg font-bold bg-white text-black hover:bg-black hover:text-white cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 font-mono"
 
           >
-            Continue with Google
+            Continue with Google <FaGoogle />
           </button>
         </div>
 
-        <p className="text-center font-semibold" style={{ color: "white" }}>
+        <p className="text-center " style={{ color: "gray" }}>
           Already have an Account?{" "}
-          <Link to="/Login" className="underline text-sky-600" >
+          <Link to="/Login" className="underline text-indigo-600 cursor-pointer font-mono" >
             Login
           </Link>
         </p>

@@ -39,7 +39,7 @@ async function createCollectionD() {
                 type: "integer" // Explicitly specify the type
             }
         });
-        console.log("Payload index for sender_id created");
+        // console.log("Payload index for sender_id created");
 
         // 3. Create index for message field (optional but recommended)
         await qdrntclient.createPayloadIndex("message_summaries", {
@@ -57,7 +57,7 @@ async function createCollectionD() {
                 type: "datetime" // For time-based filtering
             }
         });
-        console.log("Payload index for timestamp created");
+        // console.log("Payload index for timestamp created");
 
         return true;
     } catch (error) {
@@ -390,7 +390,7 @@ export const InvokeContextGenerator = async (roomName, message, sender_id, isPai
 
         if (!counterRow) {
             // No counter exists, create one
-            console.log("Inserting a new counter value in the database")
+            // console.log("Inserting a new counter value in the database")
             await pool.query(
                 `INSERT INTO context_counter (count, room_name) VALUES($1, $2)`,
                 [0, roomName]
@@ -401,7 +401,7 @@ export const InvokeContextGenerator = async (roomName, message, sender_id, isPai
                 `UPDATE context_counter SET count = $1 WHERE room_name = $2`,
                 [0, roomName]
             );
-            console.log("resetting the counter value in the db")
+            // console.log("resetting the counter value in the db")
             const context = await generateContext(message, sender_id, isPaid, plan_type);
             if (!context) {
                 return { error: "Error while generating summary of the conversation" };
@@ -412,7 +412,7 @@ export const InvokeContextGenerator = async (roomName, message, sender_id, isPai
             );
         } else if (counterRow.count >= 0 && counterRow.count < interval) {
             // Increment the counter
-            console.log("Incrementing the  counter value in the db")
+            // console.log("Incrementing the  counter value in the db")
 
             await pool.query(
                 `UPDATE context_counter SET count = count + 1 WHERE room_name = $1`,
@@ -438,12 +438,12 @@ export async function getChatHistory(req, res) {
 
         // if the chat history as been cached
         const RedisKey = `RoomInfo:${roomName}:roomHistory`;
-        await Redisclient.del(RedisKey);
-        // let previousChats = await Redisclient.get(RedisKey);
-        // if (previousChats) {
-        //     previousChats = JSON.parse(previousChats);
-        //     return res.status(200).json(previousChats);
-        // }
+        // await Redisclient.del(RedisKey);
+        let previousChats = await Redisclient.get(RedisKey);
+        if (previousChats) {
+            previousChats = JSON.parse(previousChats);
+            return res.status(200).json(previousChats);
+        }
         const currentDate = new Date();
         //  fetch messages from messages tables where user id is present but only last 8
         const User_isPaid = await pool.query(`SELECT * FROM payments WHERE user_id = $1 ORDER BY created_at DESC`, [userId])
@@ -473,7 +473,7 @@ export async function getChatHistory(req, res) {
         if (chats.rows.length === 0) {
             return res.status(200).json([]);
         }
-        // await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
+        await Redisclient.set(RedisKey, JSON.stringify(chats.rows), 'EX', 350); //around 11 mins
         return res.status(200).json(chats.rows.reverse());
 
     } catch (error) {
@@ -634,7 +634,7 @@ export const getMatchingMessages = async (message, sender_id, embeddings) => {
             if (!results || results.length === 0) {
                 return [];
             }
-            console.log(results)
+            // console.log(results)
             const FormattedResulsts = results.map((msg) => ({
                 role: msg.payload.user_id === sender_id ? "user" : "model",
                 parts: [{ text: msg.payload.message }]
